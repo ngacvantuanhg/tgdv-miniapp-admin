@@ -112,8 +112,8 @@ if not check_password():
 
 st.title("🏛️ Quản trị Mini App - Tuyên giáo và Dân vận Tuyên Quang")
 
-tab_news, tab_doc, tab_feedback, tab_survey, tab_survey_result = st.tabs(
-    ["📰 Tin tức", "📄 Văn bản", "💬 Phản ánh", "📋 Khảo sát", "📊 Kết quả khảo sát"]
+tab_news, tab_doc, tab_feedback, tab_survey, tab_survey_result, tab_settings = st.tabs(
+    ["📰 Tin tức", "📄 Văn bản", "💬 Phản ánh", "📋 Khảo sát", "📊 Kết quả khảo sát", "⚙️ Cài đặt"]
 )
 
 # ==================================================================
@@ -675,3 +675,55 @@ with tab_doc:
                     supabase.table("documents").delete().eq("id", row["id"]).execute()
                     st.success("Đã xoá.")
                     st.rerun()
+
+# ==================================================================
+# TAB 6: CÀI ĐẶT - cấu hình động Mini App
+# ==================================================================
+with tab_settings:
+    st.subheader("⚙️ Cài đặt Mini App")
+    st.caption("Thay đổi cấu hình ở đây sẽ tự động cập nhật trên Mini App mà không cần deploy lại code.")
+
+    settings_rows = (
+        supabase.table("app_settings")
+        .select("*")
+        .order("key")
+        .execute()
+        .data or []
+    )
+
+    if not settings_rows:
+        st.warning("Chưa có cấu hình nào. Hãy chạy file SQL 'create_app_settings.sql' trong Supabase trước.")
+    else:
+        st.divider()
+        for row in settings_rows:
+            with st.container():
+                st.markdown(f"**{row.get('label', row['key'])}**")
+                if row.get("description"):
+                    st.caption(row["description"])
+
+                col1, col2 = st.columns([4, 1])
+                with col1:
+                    new_value = st.text_input(
+                        "Giá trị",
+                        value=row.get("value") or "",
+                        key=f"setting_{row['key']}",
+                        label_visibility="collapsed",
+                        placeholder="Để trống nếu chưa dùng",
+                    )
+                with col2:
+                    if st.button("💾 Lưu", key=f"save_{row['key']}", use_container_width=True):
+                        supabase.table("app_settings").update({
+                            "value": new_value.strip(),
+                            "updated_at": now_iso(),
+                        }).eq("key", row["key"]).execute()
+                        st.success("Đã lưu!")
+                        st.rerun()
+                st.divider()
+
+    st.markdown("**Hướng dẫn:**")
+    st.markdown("""
+- **Link cuộc thi trắc nghiệm**: Điền link trang thi vào ô trên → bấm Lưu → ngay lập tức Mini App sẽ mở đúng link đó khi người dùng bấm nút "Trắc nghiệm". Để trống thì nút sẽ không có tác dụng.
+- Có thể thêm các cài đặt khác trong tương lai (banner thông báo, link khẩn cấp...) bằng cách thêm dòng vào bảng `app_settings` trong Supabase.
+""")
+
+
