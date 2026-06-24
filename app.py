@@ -112,8 +112,8 @@ if not check_password():
 
 st.title("🏛️ Quản trị Mini App - Tuyên giáo và Dân vận Tuyên Quang")
 
-tab_news, tab_doc, tab_feedback, tab_survey, tab_survey_result, tab_settings = st.tabs(
-    ["📰 Tin tức", "📄 Văn bản", "💬 Phản ánh", "📋 Khảo sát", "📊 Kết quả khảo sát", "⚙️ Cài đặt"]
+tab_news, tab_doc, tab_newsletter, tab_feedback, tab_survey, tab_survey_result, tab_settings = st.tabs(
+    ["📰 Tin tức", "📄 Văn bản", "📋 Bản tin chi bộ", "💬 Phản ánh", "📊 Khảo sát", "📈 Kết quả khảo sát", "⚙️ Cài đặt"]
 )
 
 # ==================================================================
@@ -253,6 +253,93 @@ with tab_news:
 # ==================================================================
 # TAB 2: PHẢN ÁNH - KIẾN NGHỊ
 # ==================================================================
+# ==================================================================
+# TAB BẢN TIN CHI BỘ
+# ==================================================================
+with tab_newsletter:
+    st.subheader("Đăng bản tin mới")
+
+    with st.expander("➕ Thêm bản tin mới", expanded=False):
+        with st.form("form_new_newsletter", clear_on_submit=True):
+            nl_title = st.text_input("Tiêu đề bản tin *")
+            nl_issue = st.text_input("Kỳ / Tháng", placeholder="VD: Tháng 6/2026")
+            nl_summary = st.text_area("Tóm tắt ngắn", height=70)
+            nl_content = st.text_area(
+                "Nội dung đầy đủ *",
+                height=400,
+                help="Hỗ trợ HTML cơ bản: <h2>Tiêu đề</h2>, <p>Đoạn văn</p>, <strong>In đậm</strong>. Hoặc gõ văn bản thường."
+            )
+            nl_published = st.checkbox("Đăng công khai ngay", value=True)
+            nl_submitted = st.form_submit_button("📤 Đăng bản tin")
+
+            if nl_submitted:
+                if not nl_title.strip() or not nl_content.strip():
+                    st.error("Vui lòng nhập tiêu đề và nội dung.")
+                else:
+                    supabase.table("newsletters").insert({
+                        "title": nl_title.strip(),
+                        "issue_number": nl_issue.strip() or None,
+                        "summary": nl_summary.strip() or None,
+                        "content": nl_content.strip(),
+                        "is_published": nl_published,
+                        "published_at": now_iso() if nl_published else None,
+                    }).execute()
+                    st.success("Đã đăng bản tin!")
+                    st.rerun()
+
+    st.divider()
+    st.subheader("Danh sách bản tin")
+
+    nl_rows = (
+        supabase.table("newsletters")
+        .select("*")
+        .order("created_at", desc=True)
+        .execute()
+        .data or []
+    )
+
+    if not nl_rows:
+        st.info("Chưa có bản tin nào.")
+
+    for row in nl_rows:
+        status = "🟢 Đã đăng" if row.get("is_published") else "⚪ Bản nháp"
+        issue = f"[{row['issue_number']}] " if row.get("issue_number") else ""
+        with st.expander(f"{status} — {issue}{row['title']}"):
+            with st.form(f"form_edit_nl_{row['id']}"):
+                e_title = st.text_input("Tiêu đề", value=row["title"])
+                e_issue = st.text_input("Kỳ / Tháng", value=row.get("issue_number") or "")
+                e_summary = st.text_area("Tóm tắt", value=row.get("summary") or "", height=70)
+                e_content = st.text_area("Nội dung", value=row.get("content") or "", height=400)
+                e_published = st.checkbox("Đăng công khai", value=bool(row.get("is_published")))
+
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    save_nl = st.form_submit_button("💾 Lưu", use_container_width=True)
+                with col2:
+                    del_nl = st.form_submit_button("🗑️ Xoá", use_container_width=True)
+
+                if save_nl:
+                    was_pub = bool(row.get("is_published"))
+                    upd = {
+                        "title": e_title.strip(),
+                        "issue_number": e_issue.strip() or None,
+                        "summary": e_summary.strip() or None,
+                        "content": e_content.strip(),
+                        "is_published": e_published,
+                        "updated_at": now_iso(),
+                    }
+                    if e_published and not was_pub:
+                        upd["published_at"] = now_iso()
+                    supabase.table("newsletters").update(upd).eq("id", row["id"]).execute()
+                    st.success("Đã lưu!")
+                    st.rerun()
+
+                if del_nl:
+                    supabase.table("newsletters").delete().eq("id", row["id"]).execute()
+                    st.success("Đã xoá.")
+                    st.rerun()
+
+
 with tab_feedback:
     st.subheader("Danh sách phản ánh")
 
