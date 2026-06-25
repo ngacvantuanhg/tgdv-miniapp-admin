@@ -33,6 +33,7 @@ NEWS_CATEGORIES = [
     ("thong_bao", "Thông báo"),
     ("hoat_dong", "Hoạt động"),
     ("chinh_sach", "Chính sách"),
+    ("guong_dien_hinh", "Gương điển hình - Mô hình hay"),
     ("huong_dan_nghiep_vu", "Hướng dẫn nghiệp vụ"),
 ]
 
