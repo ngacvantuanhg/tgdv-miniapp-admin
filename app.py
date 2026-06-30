@@ -8,6 +8,7 @@ Chạy thử trên máy: streamlit run app.py
 """
 
 import json
+import uuid
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -79,6 +80,23 @@ supabase = get_supabase()
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+STORAGE_BUCKET = "conference-docs"
+
+
+def upload_conference_file(uploaded_file, conference_id: str) -> str:
+    """Upload file PDF/Word lên Supabase Storage, trả về public URL."""
+    ext = uploaded_file.name.split(".")[-1] if "." in uploaded_file.name else "pdf"
+    safe_name = f"{conference_id}/{uuid.uuid4().hex}.{ext}"
+    file_bytes = uploaded_file.getvalue()
+    supabase.storage.from_(STORAGE_BUCKET).upload(
+        safe_name,
+        file_bytes,
+        file_options={"content-type": uploaded_file.type or "application/octet-stream"},
+    )
+    public_url = supabase.storage.from_(STORAGE_BUCKET).get_public_url(safe_name)
+    return public_url
 
 
 # ----------------------------------------------------------------
@@ -424,10 +442,17 @@ with tab_conference:
 
             for doc in doc_rows:
                 with st.expander(f"📄 {doc['order_num']}. {doc['title']}"):
+                    if doc.get("file_url"):
+                        st.markdown(f"📎 [File đã tải lên]({doc['file_url']})")
                     with st.form(f"form_edit_cdoc_{doc['id']}"):
                         d_title = st.text_input("Tên tài liệu", value=doc["title"])
                         d_order = st.number_input("Thứ tự", value=doc.get("order_num", 1), min_value=1)
-                        d_content = st.text_area("Nội dung", value=doc.get("content") or "", height=200)
+                        d_content = st.text_area("Nội dung (nếu tự soạn text)", value=doc.get("content") or "", height=150)
+                        d_file = st.file_uploader(
+                            "Hoặc tải file PDF/Word mới (sẽ thay file cũ nếu có)",
+                            type=["pdf", "doc", "docx"],
+                            key=f"upload_{doc['id']}",
+                        )
                         d_pub = st.checkbox("Công khai", value=bool(doc.get("is_published")),
                                            key=f"pub_doc_{doc['id']}")
                         col1, col2 = st.columns([3, 1])
@@ -436,12 +461,16 @@ with tab_conference:
                         with col2:
                             del_d = st.form_submit_button("🗑️ Xoá", use_container_width=True)
                         if save_d:
-                            supabase.table("conference_docs").update({
+                            update_data = {
                                 "title": d_title.strip(),
                                 "order_num": int(d_order),
                                 "content": d_content.strip() or None,
                                 "is_published": d_pub,
-                            }).eq("id", doc["id"]).execute()
+                            }
+                            if d_file is not None:
+                                with st.spinner("Đang tải file lên..."):
+                                    update_data["file_url"] = upload_conference_file(d_file, conf["id"])
+                            supabase.table("conference_docs").update(update_data).eq("id", doc["id"]).execute()
                             st.success("Đã lưu!")
                             st.rerun()
                         if del_d:
@@ -454,20 +483,29 @@ with tab_conference:
             with st.form(f"form_add_doc_{conf['id']}", clear_on_submit=True):
                 nd_title = st.text_input("Tên tài liệu *")
                 nd_order = st.number_input("Thứ tự", value=len(doc_rows) + 1, min_value=1)
-                nd_content = st.text_area("Nội dung", height=200)
+                nd_content = st.text_area("Nội dung (nếu tự soạn text - bỏ qua nếu tải file)", height=120)
+                nd_file = st.file_uploader(
+                    "Hoặc tải file PDF/Word lên",
+                    type=["pdf", "doc", "docx"],
+                    key=f"new_upload_{conf['id']}",
+                )
                 nd_pub = st.checkbox("Công khai ngay", value=True, key=f"nd_pub_{conf['id']}")
                 add_d = st.form_submit_button("➕ Thêm tài liệu")
                 if add_d:
                     if not nd_title.strip():
                         st.error("Vui lòng nhập tên tài liệu.")
                     else:
-                        supabase.table("conference_docs").insert({
+                        insert_data = {
                             "conference_id": conf["id"],
                             "title": nd_title.strip(),
                             "order_num": int(nd_order),
                             "content": nd_content.strip() or None,
                             "is_published": nd_pub,
-                        }).execute()
+                        }
+                        if nd_file is not None:
+                            with st.spinner("Đang tải file lên..."):
+                                insert_data["file_url"] = upload_conference_file(nd_file, conf["id"])
+                        supabase.table("conference_docs").insert(insert_data).execute()
                         st.success("Đã thêm tài liệu!")
                         st.rerun()
 
