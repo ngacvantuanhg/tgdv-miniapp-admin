@@ -113,8 +113,8 @@ if not check_password():
 
 st.title("🏛️ Quản trị Mini App - Tuyên giáo và Dân vận Tuyên Quang")
 
-tab_news, tab_doc, tab_newsletter, tab_feedback, tab_survey, tab_survey_result, tab_settings = st.tabs(
-    ["📰 Tin tức", "📄 Văn bản", "📋 Bản tin chi bộ", "💬 Phản ánh", "📊 Khảo sát", "📈 Kết quả khảo sát", "⚙️ Cài đặt"]
+tab_news, tab_doc, tab_newsletter, tab_conference, tab_feedback, tab_survey, tab_survey_result, tab_settings = st.tabs(
+    ["📰 Tin tức", "📄 Văn bản", "📋 Bản tin chi bộ", "🏛️ Tài liệu Hội nghị", "💬 Phản ánh", "📊 Khảo sát", "📈 Kết quả KS", "⚙️ Cài đặt"]
 )
 
 # ==================================================================
@@ -339,6 +339,137 @@ with tab_newsletter:
                     supabase.table("newsletters").delete().eq("id", row["id"]).execute()
                     st.success("Đã xoá.")
                     st.rerun()
+
+
+with tab_conference:
+    st.subheader("🏛️ Tài liệu Hội nghị")
+
+    # Phần tạo Hội nghị mới
+    with st.expander("➕ Tạo Hội nghị mới", expanded=False):
+        with st.form("form_new_conf", clear_on_submit=True):
+            cf_title = st.text_input("Tên Hội nghị *",
+                placeholder="VD: Hội nghị BCH Đảng bộ tỉnh lần thứ 15")
+            cf_desc = st.text_area("Mô tả ngắn", height=70)
+            cf_date = st.date_input("Ngày tổ chức")
+            cf_published = st.checkbox("Công khai ngay", value=True)
+            cf_submitted = st.form_submit_button("✅ Tạo Hội nghị")
+            if cf_submitted:
+                if not cf_title.strip():
+                    st.error("Vui lòng nhập tên Hội nghị.")
+                else:
+                    supabase.table("conferences").insert({
+                        "title": cf_title.strip(),
+                        "description": cf_desc.strip() or None,
+                        "conference_date": cf_date.isoformat(),
+                        "is_published": cf_published,
+                        "published_at": now_iso() if cf_published else None,
+                    }).execute()
+                    st.success("Đã tạo Hội nghị!")
+                    st.rerun()
+
+    st.divider()
+
+    # Danh sách Hội nghị
+    conf_rows = (
+        supabase.table("conferences")
+        .select("*")
+        .order("conference_date", desc=True)
+        .execute()
+        .data or []
+    )
+
+    if not conf_rows:
+        st.info("Chưa có Hội nghị nào. Tạo mới ở trên nhé!")
+
+    for conf in conf_rows:
+        status = "🟢" if conf.get("is_published") else "⚪"
+        date_str = conf.get("conference_date", "")[:10] if conf.get("conference_date") else ""
+        with st.expander(f"{status} [{date_str}] {conf['title']}"):
+
+            # Sửa thông tin Hội nghị
+            with st.form(f"form_edit_conf_{conf['id']}"):
+                e_title = st.text_input("Tên Hội nghị", value=conf["title"])
+                e_desc = st.text_area("Mô tả", value=conf.get("description") or "", height=60)
+                e_published = st.checkbox("Công khai", value=bool(conf.get("is_published")))
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    save_c = st.form_submit_button("💾 Lưu thông tin HN", use_container_width=True)
+                with col2:
+                    del_c = st.form_submit_button("🗑️ Xoá HN", use_container_width=True)
+                if save_c:
+                    supabase.table("conferences").update({
+                        "title": e_title.strip(),
+                        "description": e_desc.strip() or None,
+                        "is_published": e_published,
+                        "updated_at": now_iso(),
+                    }).eq("id", conf["id"]).execute()
+                    st.success("Đã lưu!")
+                    st.rerun()
+                if del_c:
+                    supabase.table("conferences").delete().eq("id", conf["id"]).execute()
+                    st.success("Đã xoá Hội nghị và toàn bộ tài liệu!")
+                    st.rerun()
+
+            st.markdown("**📄 Tài liệu trong Hội nghị này:**")
+
+            # Danh sách tài liệu của Hội nghị
+            doc_rows = (
+                supabase.table("conference_docs")
+                .select("*")
+                .eq("conference_id", conf["id"])
+                .order("order_num")
+                .execute()
+                .data or []
+            )
+
+            for doc in doc_rows:
+                with st.expander(f"📄 {doc['order_num']}. {doc['title']}"):
+                    with st.form(f"form_edit_cdoc_{doc['id']}"):
+                        d_title = st.text_input("Tên tài liệu", value=doc["title"])
+                        d_order = st.number_input("Thứ tự", value=doc.get("order_num", 1), min_value=1)
+                        d_content = st.text_area("Nội dung", value=doc.get("content") or "", height=200)
+                        d_pub = st.checkbox("Công khai", value=bool(doc.get("is_published")),
+                                           key=f"pub_doc_{doc['id']}")
+                        col1, col2 = st.columns([3, 1])
+                        with col1:
+                            save_d = st.form_submit_button("💾 Lưu", use_container_width=True)
+                        with col2:
+                            del_d = st.form_submit_button("🗑️ Xoá", use_container_width=True)
+                        if save_d:
+                            supabase.table("conference_docs").update({
+                                "title": d_title.strip(),
+                                "order_num": int(d_order),
+                                "content": d_content.strip() or None,
+                                "is_published": d_pub,
+                            }).eq("id", doc["id"]).execute()
+                            st.success("Đã lưu!")
+                            st.rerun()
+                        if del_d:
+                            supabase.table("conference_docs").delete().eq("id", doc["id"]).execute()
+                            st.success("Đã xoá tài liệu.")
+                            st.rerun()
+
+            # Thêm tài liệu mới vào Hội nghị
+            st.markdown("**➕ Thêm tài liệu mới:**")
+            with st.form(f"form_add_doc_{conf['id']}", clear_on_submit=True):
+                nd_title = st.text_input("Tên tài liệu *")
+                nd_order = st.number_input("Thứ tự", value=len(doc_rows) + 1, min_value=1)
+                nd_content = st.text_area("Nội dung", height=200)
+                nd_pub = st.checkbox("Công khai ngay", value=True, key=f"nd_pub_{conf['id']}")
+                add_d = st.form_submit_button("➕ Thêm tài liệu")
+                if add_d:
+                    if not nd_title.strip():
+                        st.error("Vui lòng nhập tên tài liệu.")
+                    else:
+                        supabase.table("conference_docs").insert({
+                            "conference_id": conf["id"],
+                            "title": nd_title.strip(),
+                            "order_num": int(nd_order),
+                            "content": nd_content.strip() or None,
+                            "is_published": nd_pub,
+                        }).execute()
+                        st.success("Đã thêm tài liệu!")
+                        st.rerun()
 
 
 with tab_feedback:
