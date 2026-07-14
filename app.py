@@ -159,6 +159,9 @@ def upload_news_image(uploaded_file) -> str:
         file_options={"content-type": uploaded_file.type or "image/jpeg"},
     )
     return supabase.storage.from_(NEWS_IMAGE_BUCKET).get_public_url(safe_name)
+
+
+def check_password() -> bool:
     def password_entered():
         if st.session_state.get("password") == st.secrets["ADMIN_PASSWORD"]:
             st.session_state["password_correct"] = True
