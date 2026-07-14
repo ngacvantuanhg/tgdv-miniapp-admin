@@ -146,7 +146,19 @@ def upload_conference_file(uploaded_file, conference_id: str) -> str:
     return supabase.storage.from_(STORAGE_BUCKET).get_public_url(safe_name)
 
 
-def check_password() -> bool:
+NEWS_IMAGE_BUCKET = "news-images"
+
+
+def upload_news_image(uploaded_file) -> str:
+    """Upload ảnh tin tức lên Supabase Storage - không lo bị mất link."""
+    ext = uploaded_file.name.split(".")[-1] if "." in uploaded_file.name else "jpg"
+    safe_name = f"{uuid.uuid4().hex}.{ext}"
+    file_bytes = uploaded_file.getvalue()
+    supabase.storage.from_(NEWS_IMAGE_BUCKET).upload(
+        safe_name, file_bytes,
+        file_options={"content-type": uploaded_file.type or "image/jpeg"},
+    )
+    return supabase.storage.from_(NEWS_IMAGE_BUCKET).get_public_url(safe_name)
     def password_entered():
         if st.session_state.get("password") == st.secrets["ADMIN_PASSWORD"]:
             st.session_state["password_correct"] = True
@@ -212,7 +224,12 @@ with tab_news:
                 "Phân loại", options=[c[0] for c in NEWS_CATEGORIES],
                 format_func=lambda c: dict(NEWS_CATEGORIES)[c],
             )
-            n_cover_image_url = st.text_input("Link ảnh đại diện")
+            n_cover_image_url = st.text_input("Link ảnh đại diện (dán link nếu có sẵn)")
+            n_cover_image_upload = st.file_uploader(
+                "Hoặc tải ảnh lên từ máy (JPG/PNG) - ưu tiên dùng cách này để ảnh không bị mất",
+                type=["jpg", "jpeg", "png", "webp"],
+                key="new_news_img",
+            )
             n_external_link = st.text_input("Link bài viết gốc (để trống nếu tự soạn)")
             n_is_published = st.checkbox("Đăng công khai ngay", value=True)
             submitted = st.form_submit_button("📤 Đăng tin", use_container_width=True)
@@ -220,12 +237,17 @@ with tab_news:
                 if not n_title.strip() or not n_content.strip():
                     st.error("Vui lòng nhập Tiêu đề và Nội dung.")
                 else:
+                    # Ưu tiên ảnh upload, nếu không có thì dùng link dán
+                    final_cover = n_cover_image_url.strip() or None
+                    if n_cover_image_upload is not None:
+                        with st.spinner("Đang tải ảnh lên..."):
+                            final_cover = upload_news_image(n_cover_image_upload)
                     supabase.table("news").insert({
                         "title": n_title.strip(),
                         "summary": n_summary.strip() or None,
                         "content": n_content.strip(),
                         "category": n_category,
-                        "cover_image_url": n_cover_image_url.strip() or None,
+                        "cover_image_url": final_cover,
                         "external_link": n_external_link.strip() or None,
                         "is_published": n_is_published,
                         "published_at": now_iso() if n_is_published else None,
@@ -259,6 +281,13 @@ with tab_news:
                             key=f"cat_{row['id']}",
                         )
                         e_cover = st.text_input("Link ảnh đại diện", value=row.get("cover_image_url") or "")
+                        e_img_upload = st.file_uploader(
+                            "Hoặc tải ảnh mới lên (sẽ thay link cũ)",
+                            type=["jpg", "jpeg", "png", "webp"],
+                            key=f"img_{row['id']}",
+                        )
+                        if row.get("cover_image_url"):
+                            st.image(row["cover_image_url"], width=120, caption="Ảnh hiện tại")
                         e_link = st.text_input("Link bài viết gốc", value=row.get("external_link") or "")
                         e_published = st.checkbox("Đăng công khai", value=bool(row.get("is_published")))
 
@@ -270,10 +299,14 @@ with tab_news:
 
                         if save_clicked:
                             was_published = bool(row.get("is_published"))
+                            final_cover = e_cover.strip() or None
+                            if e_img_upload is not None:
+                                with st.spinner("Đang tải ảnh lên..."):
+                                    final_cover = upload_news_image(e_img_upload)
                             update_data = {
                                 "title": e_title.strip(), "summary": e_summary.strip() or None,
                                 "content": e_content.strip(), "category": e_category,
-                                "cover_image_url": e_cover.strip() or None,
+                                "cover_image_url": final_cover,
                                 "external_link": e_link.strip() or None,
                                 "is_published": e_published, "updated_at": now_iso(),
                             }
