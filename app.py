@@ -1,5 +1,5 @@
 """
-Trang quản trị Mini App - Ban Tuyên giáo và Dân vận Tuyên Quang
+Trang quản trị Mini App - Ban Tuyên giáo Tỉnh ủy Tuyên Quang
 ================================================================
 Chạy thử trên máy: streamlit run app.py
 """
@@ -177,7 +177,7 @@ def check_password() -> bool:
         <div style="font-size:36px">🏛️</div>
         <div>
             <h1>QUẢN TRỊ MINI APP</h1>
-            <p>Ban Tuyên giáo và Dân vận Tỉnh ủy Tuyên Quang</p>
+            <p>Ban Tuyên giáo Tỉnh ủy Tuyên Quang</p>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -200,7 +200,7 @@ st.markdown(f"""
     <div style="font-size:36px">🏛️</div>
     <div>
         <h1>QUẢN TRỊ MINI APP</h1>
-        <p>Ban Tuyên giáo và Dân vận Tỉnh ủy Tuyên Quang</p>
+        <p>Ban Tuyên giáo Tỉnh ủy Tuyên Quang</p>
     </div>
 </div>
 """, unsafe_allow_html=True)
