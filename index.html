@@ -1,0 +1,1919 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quản trị Mini App — Ban Tuyên giáo Tỉnh ủy Tuyên Quang</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
+<style>
+/* ================================================================
+   RESET & BASE
+================================================================ */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --red:#C8102E;--red-dark:#a30d25;--red-light:#fce8ec;
+  --gold:#D4A017;--gold-light:#fdf6e3;
+  --navy:#0D1B2A;--navy2:#1a2d42;
+  --bg:#F4F5F7;--white:#fff;
+  --text:#1a202c;--text2:#4a5568;--text3:#a0aec0;
+  --border:#e2e8f0;--border2:#cbd5e0;
+  --success:#38a169;--warn:#dd6b20;--danger:#e53e3e;--info:#3182ce;
+  --radius:10px;--shadow:0 2px 8px rgba(0,0,0,.08);--shadow2:0 4px 20px rgba(0,0,0,.12);
+  --sidebar:230px;--header:60px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  background:var(--bg);color:var(--text);font-size:14px;line-height:1.6}
+a{color:var(--red);text-decoration:none}
+input,select,textarea,button{font-family:inherit;font-size:14px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--red)!important;
+  box-shadow:0 0 0 3px rgba(200,16,46,.12)}
+
+/* ================================================================
+   SCROLLBAR
+================================================================ */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* ================================================================
+   LOGIN SCREEN
+================================================================ */
+#login-screen{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,var(--navy) 0%,#1e3a5f 50%,var(--navy2) 100%);
+  position:relative;overflow:hidden;
+}
+#login-screen::before{
+  content:'';position:absolute;inset:0;
+  background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+.login-box{
+  background:var(--white);border-radius:16px;padding:40px;width:380px;
+  box-shadow:0 20px 60px rgba(0,0,0,.3);position:relative;
+}
+.login-logo{text-align:center;margin-bottom:28px}
+.login-logo .star{font-size:48px;line-height:1}
+.login-logo h1{font-size:18px;font-weight:700;color:var(--red);margin-top:8px;line-height:1.3}
+.login-logo p{font-size:12px;color:var(--text2);margin-top:4px}
+.login-form label{display:block;font-size:12px;font-weight:600;color:var(--text2);
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.login-form .field{margin-bottom:16px}
+.login-form input{
+  width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;
+  transition:border .2s;background:#fafafa;
+}
+.login-form input:focus{background:var(--white)}
+.btn-login{
+  width:100%;padding:13px;background:var(--red);color:var(--white);border:none;
+  border-radius:8px;font-weight:700;font-size:15px;cursor:pointer;
+  transition:background .2s;margin-top:4px;
+}
+.btn-login:hover{background:var(--red-dark)}
+.btn-login:disabled{opacity:.6;cursor:not-allowed}
+.login-error{
+  background:#fff5f5;border:1px solid #fed7d7;color:var(--danger);
+  padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px;
+  display:none;
+}
+
+/* ================================================================
+   APP LAYOUT
+================================================================ */
+#app{display:none;min-height:100vh}
+#sidebar{
+  position:fixed;top:0;left:0;width:var(--sidebar);height:100vh;
+  background:var(--navy);color:#fff;overflow-y:auto;z-index:100;
+  display:flex;flex-direction:column;
+}
+.sidebar-header{
+  padding:18px 16px 14px;border-bottom:1px solid rgba(255,255,255,.08);
+  flex-shrink:0;
+}
+.sidebar-header .brand{font-size:13px;font-weight:700;color:var(--gold);
+  text-transform:uppercase;letter-spacing:1px}
+.sidebar-header .sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:2px;line-height:1.4}
+.nav-section{padding:10px 0 2px;flex-shrink:0}
+.nav-label{font-size:10px;font-weight:700;color:rgba(255,255,255,.35);
+  text-transform:uppercase;letter-spacing:1px;padding:0 16px 4px}
+.nav-item{
+  display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;
+  font-size:13px;color:rgba(255,255,255,.75);transition:all .15s;border-left:3px solid transparent;
+  user-select:none;
+}
+.nav-item:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav-item.active{background:rgba(200,16,46,.2);color:#fff;border-left-color:var(--red)}
+.nav-item .icon{font-size:16px;width:20px;text-align:center;flex-shrink:0}
+.nav-item .badge{
+  margin-left:auto;background:var(--red);color:#fff;border-radius:10px;
+  font-size:10px;font-weight:700;padding:1px 6px;min-width:18px;text-align:center;
+}
+.sidebar-footer{margin-top:auto;padding:12px 16px;border-top:1px solid rgba(255,255,255,.08);flex-shrink:0}
+.user-info{font-size:12px;color:rgba(255,255,255,.5);margin-bottom:8px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.btn-logout{
+  display:flex;align-items:center;gap:6px;width:100%;padding:8px 12px;
+  background:rgba(255,255,255,.08);color:rgba(255,255,255,.8);border:none;
+  border-radius:7px;cursor:pointer;font-size:13px;transition:background .2s;
+}
+.btn-logout:hover{background:rgba(255,255,255,.15)}
+
+#main{margin-left:var(--sidebar);min-height:100vh;display:flex;flex-direction:column}
+#header{
+  position:sticky;top:0;z-index:50;background:var(--white);
+  border-bottom:1px solid var(--border);padding:0 24px;
+  height:var(--header);display:flex;align-items:center;gap:12px;
+  box-shadow:0 1px 4px rgba(0,0,0,.06);
+}
+#header h2{font-size:17px;font-weight:700;color:var(--text);flex:1}
+#header .header-actions{display:flex;align-items:center;gap:8px}
+.btn-refresh{
+  display:flex;align-items:center;gap:6px;padding:7px 14px;background:var(--bg);
+  border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;
+  color:var(--text2);transition:all .2s;
+}
+.btn-refresh:hover{background:var(--border);color:var(--text)}
+#content{flex:1;padding:24px;overflow:auto}
+
+/* ================================================================
+   SECTIONS
+================================================================ */
+.section{display:none;animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.section.active{display:block}
+
+/* ================================================================
+   CARDS & GRID
+================================================================ */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.stat-card{
+  background:var(--white);border-radius:var(--radius);padding:20px;
+  box-shadow:var(--shadow);display:flex;align-items:center;gap:14px;
+}
+.stat-icon{
+  width:52px;height:52px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  font-size:24px;flex-shrink:0;
+}
+.stat-value{font-size:28px;font-weight:800;line-height:1}
+.stat-label{font-size:12px;color:var(--text2);margin-top:3px}
+.card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.card-header{
+  padding:14px 20px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.card-title{font-weight:700;font-size:15px}
+.card-body{padding:16px 20px}
+
+/* ================================================================
+   BUTTONS
+================================================================ */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;padding:8px 16px;
+  border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;
+  border:none;transition:all .2s;white-space:nowrap;
+}
+.btn-primary{background:var(--red);color:#fff}
+.btn-primary:hover{background:var(--red-dark)}
+.btn-secondary{background:var(--bg);color:var(--text2);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--border)}
+.btn-success{background:var(--success);color:#fff}
+.btn-success:hover{background:#2f855a}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-icon{padding:6px;border-radius:6px;background:transparent;border:1px solid var(--border);
+  cursor:pointer;font-size:14px;color:var(--text2);transition:all .15s}
+.btn-icon:hover{background:var(--bg)}
+.btn-icon.danger:hover{background:#fff5f5;color:var(--danger);border-color:#fed7d7}
+
+/* ================================================================
+   TOOLBAR
+================================================================ */
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.search-box{
+  flex:1;min-width:200px;max-width:360px;position:relative;
+}
+.search-box input{
+  width:100%;padding:8px 12px 8px 34px;border:1.5px solid var(--border);
+  border-radius:8px;background:var(--white);
+}
+.search-box::before{
+  content:'🔍';position:absolute;left:10px;top:50%;transform:translateY(-50%);
+  font-size:13px;pointer-events:none;
+}
+.filter-select{
+  padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;
+  background:var(--white);cursor:pointer;
+}
+
+/* ================================================================
+   TABLE
+================================================================ */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead th{
+  background:#f8fafc;padding:10px 14px;text-align:left;font-size:12px;
+  font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;
+  border-bottom:2px solid var(--border);white-space:nowrap;
+}
+tbody td{padding:11px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:#f8fafc}
+.td-actions{display:flex;gap:5px;justify-content:flex-end}
+.truncate{max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ================================================================
+   BADGES
+================================================================ */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;
+  border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.badge-green{background:#f0fff4;color:#276749}
+.badge-red{background:#fff5f5;color:#c53030}
+.badge-blue{background:#ebf8ff;color:#2b6cb0}
+.badge-yellow{background:var(--gold-light);color:#744210}
+.badge-gray{background:#edf2f7;color:#4a5568}
+
+/* ================================================================
+   FORM
+================================================================ */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.form-group{margin-bottom:16px}
+.form-group.full{grid-column:1/-1}
+.form-label{display:block;font-size:12px;font-weight:600;color:var(--text2);
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.form-label .req{color:var(--red)}
+.form-control{
+  width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;
+  background:var(--white);transition:border .2s;
+}
+.form-control:focus{border-color:var(--red);box-shadow:0 0 0 3px rgba(200,16,46,.1)}
+textarea.form-control{resize:vertical;min-height:100px}
+.form-hint{font-size:11px;color:var(--text3);margin-top:4px}
+.form-check{display:flex;align-items:center;gap:8px;cursor:pointer}
+.form-check input{width:16px;height:16px;cursor:pointer;accent-color:var(--red)}
+
+/* ================================================================
+   IMAGE UPLOAD
+================================================================ */
+.img-upload-box{
+  border:2px dashed var(--border2);border-radius:10px;padding:20px;
+  text-align:center;cursor:pointer;transition:all .2s;background:#fafafa;
+}
+.img-upload-box:hover{border-color:var(--red);background:var(--red-light)}
+.img-preview{
+  width:100%;max-height:160px;object-fit:cover;border-radius:8px;
+  margin-top:10px;display:none;
+}
+.img-url-input{margin-top:8px;display:flex;gap:6px}
+.img-url-input input{flex:1}
+
+/* ================================================================
+   MODAL
+================================================================ */
+#modal-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
+  z-index:1000;align-items:flex-start;justify-content:center;
+  padding:40px 20px;overflow-y:auto;backdrop-filter:blur(2px);
+}
+#modal-overlay.open{display:flex}
+.modal{
+  background:var(--white);border-radius:14px;width:100%;max-width:680px;
+  box-shadow:var(--shadow2);position:relative;margin:auto;
+}
+.modal-header{
+  padding:18px 24px 14px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.modal-title{font-size:17px;font-weight:700}
+.modal-close{
+  background:none;border:none;font-size:20px;cursor:pointer;
+  color:var(--text3);padding:4px;line-height:1;
+}
+.modal-close:hover{color:var(--text)}
+.modal-body{padding:20px 24px}
+.modal-footer{
+  padding:14px 24px 20px;display:flex;justify-content:flex-end;gap:10px;
+}
+
+/* ================================================================
+   TOAST
+================================================================ */
+#toast-container{
+  position:fixed;top:70px;right:20px;z-index:9999;
+  display:flex;flex-direction:column;gap:8px;
+}
+.toast{
+  display:flex;align-items:center;gap:10px;padding:12px 18px;
+  border-radius:10px;box-shadow:var(--shadow2);font-size:13px;font-weight:500;
+  min-width:260px;max-width:360px;animation:slideIn .3s ease;
+}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:none;opacity:1}}
+.toast.success{background:#f0fff4;color:#276749;border-left:4px solid var(--success)}
+.toast.error{background:#fff5f5;color:#c53030;border-left:4px solid var(--danger)}
+.toast.info{background:#ebf8ff;color:#2b6cb0;border-left:4px solid var(--info)}
+
+/* ================================================================
+   QUICK POST
+================================================================ */
+.quick-post-wrap{max-width:720px;margin:0 auto}
+.quick-post-card{background:var(--white);border-radius:14px;padding:28px;box-shadow:var(--shadow)}
+
+/* ================================================================
+   STATISTICS
+================================================================ */
+.stat-tabs{display:flex;gap:4px;border-bottom:2px solid var(--border);margin-bottom:20px}
+.stat-tab{
+  padding:9px 20px;border:none;background:none;cursor:pointer;font-size:14px;
+  font-weight:600;color:var(--text2);border-bottom:2px solid transparent;
+  margin-bottom:-2px;transition:all .2s;
+}
+.stat-tab.active{color:var(--red);border-bottom-color:var(--red)}
+.chart-container{position:relative;height:280px;margin-bottom:20px}
+.stats-table th{background:#fff8f8}
+
+/* ================================================================
+   FEEDBACK
+================================================================ */
+.feedback-card{
+  border:1.5px solid var(--border);border-radius:10px;padding:16px;
+  margin-bottom:12px;cursor:pointer;transition:all .2s;
+}
+.feedback-card:hover{border-color:var(--red-light);box-shadow:var(--shadow)}
+.feedback-card.status-moi{border-left:4px solid var(--red)}
+.feedback-card.status-dang_xu_ly{border-left:4px solid var(--warn)}
+.feedback-card.status-da_xu_ly{border-left:4px solid var(--success)}
+
+/* ================================================================
+   SETTINGS
+================================================================ */
+.settings-item{
+  display:flex;align-items:flex-start;gap:16px;padding:16px 0;
+  border-bottom:1px solid var(--border);
+}
+.settings-item:last-child{border-bottom:none}
+.settings-info{flex:1}
+.settings-info strong{display:block;font-size:14px;margin-bottom:2px}
+.settings-info span{font-size:12px;color:var(--text2)}
+.settings-input{flex:1;max-width:340px}
+.settings-input input{
+  width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;
+}
+
+/* ================================================================
+   SURVEY RESULTS
+================================================================ */
+.survey-chart-wrap{background:var(--white);border-radius:var(--radius);
+  padding:20px;box-shadow:var(--shadow);margin-bottom:16px}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.bar-label{width:200px;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-track{flex:1;background:var(--bg);border-radius:4px;height:20px;overflow:hidden}
+.bar-fill{background:var(--red);height:100%;border-radius:4px;transition:width .5s}
+.bar-count{font-size:12px;color:var(--text2);width:40px;text-align:right}
+
+/* ================================================================
+   EMPTY STATE
+================================================================ */
+.empty-state{text-align:center;padding:48px 20px;color:var(--text3)}
+.empty-state .icon{font-size:48px;margin-bottom:12px}
+.empty-state p{font-size:14px}
+
+/* ================================================================
+   LOADING
+================================================================ */
+.loading{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--text3)}
+.spinner{
+  width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--red);
+  border-radius:50%;animation:spin .7s linear infinite;margin-right:10px;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ================================================================
+   PAGINATION
+================================================================ */
+.pagination{display:flex;align-items:center;gap:6px;justify-content:center;margin-top:16px}
+.page-btn{
+  padding:5px 10px;border:1px solid var(--border);border-radius:6px;
+  background:var(--white);cursor:pointer;font-size:13px;transition:all .2s;
+}
+.page-btn:hover{background:var(--bg)}
+.page-btn.active{background:var(--red);color:#fff;border-color:var(--red)}
+.page-btn:disabled{opacity:.4;cursor:not-allowed}
+</style>
+</head>
+<body>
+
+<!-- ================================================================
+     LOGIN SCREEN
+================================================================ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="star">⭐</div>
+      <h1>Ban Tuyên giáo Tỉnh ủy<br>Tuyên Quang</h1>
+      <p>Hệ thống quản trị Mini App Zalo</p>
+    </div>
+    <div id="login-error" class="login-error"></div>
+    <form class="login-form" onsubmit="handleLogin(event)">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="admin@example.com" required autocomplete="email">
+      </div>
+      <div class="field">
+        <label>Mật khẩu</label>
+        <input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn-login" id="btn-login">Đăng nhập</button>
+    </form>
+  </div>
+</div>
+
+<!-- ================================================================
+     APP
+================================================================ -->
+<div id="app">
+  <!-- SIDEBAR -->
+  <nav id="sidebar">
+    <div class="sidebar-header">
+      <div class="brand">📡 Mini App Admin</div>
+      <div class="sub">Ban Tuyên giáo Tỉnh ủy<br>Tuyên Quang</div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Tổng quan</div>
+      <div class="nav-item active" onclick="navigate('dashboard')" id="nav-dashboard">
+        <span class="icon">🏠</span> Tổng quan
+      </div>
+      <div class="nav-item" onclick="navigate('quick-post')" id="nav-quick-post">
+        <span class="icon">⚡</span> Đăng tin nhanh
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Nội dung</div>
+      <div class="nav-item" onclick="navigate('news')" id="nav-news">
+        <span class="icon">📰</span> Tin tức
+      </div>
+      <div class="nav-item" onclick="navigate('documents')" id="nav-documents">
+        <span class="icon">📄</span> Văn bản
+      </div>
+      <div class="nav-item" onclick="navigate('newsletters')" id="nav-newsletters">
+        <span class="icon">📋</span> Bản tin chi bộ
+      </div>
+      <div class="nav-item" onclick="navigate('conferences')" id="nav-conferences">
+        <span class="icon">🏛️</span> Tài liệu HN
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Tương tác</div>
+      <div class="nav-item" onclick="navigate('feedback')" id="nav-feedback">
+        <span class="icon">💬</span> Phản ánh
+        <span class="badge" id="badge-feedback" style="display:none">0</span>
+      </div>
+      <div class="nav-item" onclick="navigate('surveys')" id="nav-surveys">
+        <span class="icon">📊</span> Khảo sát
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Báo cáo</div>
+      <div class="nav-item" onclick="navigate('statistics')" id="nav-statistics">
+        <span class="icon">📈</span> Thống kê
+      </div>
+      <div class="nav-item" onclick="navigate('settings')" id="nav-settings">
+        <span class="icon">⚙️</span> Cài đặt
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-info" id="user-info-label">Đang tải...</div>
+      <button class="btn-logout" onclick="handleLogout()">🚪 Đăng xuất</button>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main id="main">
+    <div id="header">
+      <h2 id="header-title">Tổng quan</h2>
+      <div class="header-actions">
+        <button class="btn-refresh" onclick="refreshCurrentSection()">🔄 Làm mới</button>
+      </div>
+    </div>
+
+    <div id="content">
+
+      <!-- ======== DASHBOARD ======== -->
+      <div class="section active" id="section-dashboard">
+        <div class="stats-grid" id="stats-grid">
+          <div class="stat-card"><div class="stat-icon" style="background:#fce8ec">📰</div>
+            <div><div class="stat-value" id="stat-news">—</div><div class="stat-label">Tin tức</div></div></div>
+          <div class="stat-card"><div class="stat-icon" style="background:#ebf8ff">📄</div>
+            <div><div class="stat-value" id="stat-docs">—</div><div class="stat-label">Văn bản</div></div></div>
+          <div class="stat-card"><div class="stat-icon" style="background:#f0fff4">💬</div>
+            <div><div class="stat-value" id="stat-feedback">—</div><div class="stat-label">Phản ánh mới</div></div></div>
+          <div class="stat-card"><div class="stat-icon" style="background:var(--gold-light)">📊</div>
+            <div><div class="stat-value" id="stat-surveys">—</div><div class="stat-label">Khảo sát</div></div></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">📰 Tin tức gần đây</div>
+              <button class="btn btn-sm btn-primary" onclick="navigate('news')">Xem tất cả</button>
+            </div>
+            <div class="card-body" id="recent-news-list">
+              <div class="loading"><div class="spinner"></div>Đang tải...</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">💬 Phản ánh chờ xử lý</div>
+              <button class="btn btn-sm btn-primary" onclick="navigate('feedback')">Xem tất cả</button>
+            </div>
+            <div class="card-body" id="recent-feedback-list">
+              <div class="loading"><div class="spinner"></div>Đang tải...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======== QUICK POST ======== -->
+      <div class="section" id="section-quick-post">
+        <div class="quick-post-wrap">
+          <div class="quick-post-card">
+            <h3 style="margin-bottom:20px;font-size:16px">⚡ Đăng tin nhanh</h3>
+            <form id="quick-post-form" onsubmit="handleQuickPost(event)">
+              <div class="form-group">
+                <label class="form-label">Tiêu đề <span class="req">*</span></label>
+                <input type="text" class="form-control" id="qp-title" placeholder="Nhập tiêu đề tin tức..." required>
+              </div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="form-label">Danh mục</label>
+                  <select class="form-control" id="qp-category">
+                    <option value="thong_bao">Thông báo</option>
+                    <option value="hoat_dong">Hoạt động</option>
+                    <option value="chinh_sach">Chính sách</option>
+                    <option value="guong_dien_hinh">Gương điển hình - Mô hình hay</option>
+                    <option value="huong_dan_nghiep_vu">Hướng dẫn nghiệp vụ</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Link ngoài (tùy chọn)</label>
+                  <input type="url" class="form-control" id="qp-link" placeholder="https://...">
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Tóm tắt</label>
+                <textarea class="form-control" id="qp-summary" rows="2" placeholder="Tóm tắt ngắn gọn nội dung..."></textarea>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Nội dung</label>
+                <textarea class="form-control" id="qp-content" rows="6" placeholder="Nhập nội dung đầy đủ..."></textarea>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Ảnh bìa</label>
+                <div class="img-upload-box" onclick="triggerCloudinaryQP()" id="qp-img-box">
+                  <div>☁️ <strong>Nhấn để tải ảnh lên Cloudinary</strong></div>
+                  <div style="font-size:12px;color:var(--text3);margin-top:4px">hoặc dán URL ảnh bên dưới</div>
+                </div>
+                <div class="img-url-input">
+                  <input type="url" class="form-control" id="qp-image-url" placeholder="https://res.cloudinary.com/..." oninput="previewImage('qp-image-url','qp-img-preview')">
+                  <button type="button" class="btn btn-secondary" onclick="clearQpImage()">Xóa</button>
+                </div>
+                <img id="qp-img-preview" class="img-preview">
+              </div>
+              <div class="form-group">
+                <label class="form-check">
+                  <input type="checkbox" id="qp-published" checked>
+                  <span>Xuất bản ngay (hiển thị trên Mini App)</span>
+                </label>
+              </div>
+              <div style="display:flex;gap:10px;margin-top:4px">
+                <button type="submit" class="btn btn-primary" id="btn-quick-post" style="flex:1">
+                  ✅ Đăng tin
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="clearQuickPostForm()">🗑️ Làm mới</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======== NEWS ======== -->
+      <div class="section" id="section-news">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📰 Danh sách tin tức</div>
+            <button class="btn btn-primary" onclick="openNewsModal()">➕ Thêm tin</button>
+          </div>
+          <div class="card-body" style="padding-bottom:8px">
+            <div class="toolbar">
+              <div class="search-box">
+                <input type="text" id="news-search" placeholder="Tìm kiếm tiêu đề..." oninput="filterNews()">
+              </div>
+              <select class="filter-select" id="news-cat-filter" onchange="filterNews()">
+                <option value="">Tất cả danh mục</option>
+                <option value="thong_bao">Thông báo</option>
+                <option value="hoat_dong">Hoạt động</option>
+                <option value="chinh_sach">Chính sách</option>
+                <option value="guong_dien_hinh">Gương điển hình</option>
+                <option value="huong_dan_nghiep_vu">Hướng dẫn NV</option>
+              </select>
+              <select class="filter-select" id="news-status-filter" onchange="filterNews()">
+                <option value="">Tất cả trạng thái</option>
+                <option value="published">Đã xuất bản</option>
+                <option value="draft">Nháp</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrap" id="news-table-wrap">
+            <div class="loading"><div class="spinner"></div>Đang tải...</div>
+          </div>
+          <div class="card-body" id="news-pagination"></div>
+        </div>
+      </div>
+
+      <!-- ======== DOCUMENTS ======== -->
+      <div class="section" id="section-documents">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📄 Văn bản</div>
+            <button class="btn btn-primary" onclick="openDocModal()">➕ Thêm văn bản</button>
+          </div>
+          <div class="card-body" style="padding-bottom:8px">
+            <div class="toolbar">
+              <div class="search-box">
+                <input type="text" id="doc-search" placeholder="Tìm kiếm..." oninput="filterDocs()">
+              </div>
+              <select class="filter-select" id="doc-cat-filter" onchange="filterDocs()">
+                <option value="">Tất cả loại</option>
+                <option value="van_ban_chi_dao">Văn bản chỉ đạo</option>
+                <option value="nghi_quyet">Nghị quyết</option>
+                <option value="chi_thi">Chỉ thị</option>
+                <option value="huong_dan">Hướng dẫn</option>
+                <option value="thong_bao">Thông báo</option>
+                <option value="cam_nang_phap_luat">Cẩm nang pháp luật</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrap" id="docs-table-wrap">
+            <div class="loading"><div class="spinner"></div>Đang tải...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======== NEWSLETTERS ======== -->
+      <div class="section" id="section-newsletters">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📋 Bản tin chi bộ</div>
+            <button class="btn btn-primary" onclick="openNewsletterModal()">➕ Thêm bản tin</button>
+          </div>
+          <div class="table-wrap" id="nl-table-wrap" style="margin-top:4px">
+            <div class="loading"><div class="spinner"></div>Đang tải...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======== CONFERENCES ======== -->
+      <div class="section" id="section-conferences">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🏛️ Tài liệu Hội nghị</div>
+            <button class="btn btn-primary" onclick="openConferenceModal()">➕ Thêm hội nghị</button>
+          </div>
+          <div class="table-wrap" id="conf-table-wrap" style="margin-top:4px">
+            <div class="loading"><div class="spinner"></div>Đang tải...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======== FEEDBACK ======== -->
+      <div class="section" id="section-feedback">
+        <div class="toolbar" style="margin-bottom:16px">
+          <select class="filter-select" id="fb-status-filter" onchange="filterFeedback()">
+            <option value="">Tất cả trạng thái</option>
+            <option value="moi">🔴 Mới</option>
+            <option value="dang_xu_ly">🟡 Đang xử lý</option>
+            <option value="da_xu_ly">🟢 Đã xử lý</option>
+          </select>
+          <select class="filter-select" id="fb-cat-filter" onchange="filterFeedback()">
+            <option value="">Tất cả lĩnh vực</option>
+            <option value="an_ninh">An ninh trật tự</option>
+            <option value="moi_truong">Môi trường</option>
+            <option value="chinh_sach">Chính sách, chế độ</option>
+            <option value="thu_tuc_hanh_chinh">Thủ tục hành chính</option>
+            <option value="khac">Khác</option>
+          </select>
+        </div>
+        <div id="feedback-list">
+          <div class="loading"><div class="spinner"></div>Đang tải...</div>
+        </div>
+      </div>
+
+      <!-- ======== SURVEYS ======== -->
+      <div class="section" id="section-surveys">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">📊 Danh sách khảo sát</div>
+              <button class="btn btn-primary" onclick="openSurveyModal()">➕ Tạo khảo sát</button>
+            </div>
+            <div id="survey-list" style="padding:16px">
+              <div class="loading"><div class="spinner"></div>Đang tải...</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title" id="survey-result-title">📈 Kết quả khảo sát</div>
+            </div>
+            <div id="survey-results" style="padding:16px">
+              <div class="empty-state"><div class="icon">📊</div><p>Chọn một khảo sát để xem kết quả</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======== STATISTICS ======== -->
+      <div class="section" id="section-statistics">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📈 Thống kê tin tức</div>
+            <button class="btn btn-success" onclick="exportStatsWord()">📥 Xuất Word</button>
+          </div>
+          <div class="card-body">
+            <div class="stat-tabs">
+              <button class="stat-tab active" onclick="switchStatTab('week',this)">Theo tuần</button>
+              <button class="stat-tab" onclick="switchStatTab('month',this)">Theo tháng</button>
+              <button class="stat-tab" onclick="switchStatTab('quarter',this)">Theo quý</button>
+              <button class="stat-tab" onclick="switchStatTab('year',this)">Theo năm</button>
+            </div>
+            <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center">
+              <select class="filter-select" id="stat-year" onchange="loadStatistics()">
+                <!-- filled by JS -->
+              </select>
+              <select class="filter-select" id="stat-month" style="display:none" onchange="loadStatistics()">
+                <!-- filled by JS -->
+              </select>
+              <span id="stat-info" style="font-size:13px;color:var(--text2)"></span>
+            </div>
+            <div class="chart-container">
+              <canvas id="stats-chart"></canvas>
+            </div>
+            <div class="table-wrap">
+              <table id="stats-table" class="stats-table">
+                <thead><tr><th>Kỳ</th><th>Số bài</th><th>Đã xuất bản</th><th>Nháp</th></tr></thead>
+                <tbody id="stats-tbody"></tbody>
+                <tfoot id="stats-tfoot"></tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======== SETTINGS ======== -->
+      <div class="section" id="section-settings">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">⚙️ Cài đặt ứng dụng</div>
+            <button class="btn btn-primary" onclick="saveAllSettings()">💾 Lưu tất cả</button>
+          </div>
+          <div class="card-body">
+            <div id="settings-list">
+              <div class="loading"><div class="spinner"></div>Đang tải...</div>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-header"><div class="card-title">☁️ Cloudinary — Cài đặt ảnh</div></div>
+          <div class="card-body">
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label">Cloud Name</label>
+                <input type="text" class="form-control" id="cl-cloud-name" placeholder="your-cloud-name"
+                  value="" oninput="saveCloudinaryConfig()">
+                <div class="form-hint">Lấy từ Dashboard Cloudinary</div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Upload Preset (unsigned)</label>
+                <input type="text" class="form-control" id="cl-preset" placeholder="tgdv_news"
+                  value="tgdv_news" oninput="saveCloudinaryConfig()">
+                <div class="form-hint">Tên preset unsigned đã tạo</div>
+              </div>
+            </div>
+            <div style="font-size:12px;color:var(--text2);background:#f8fafc;border-radius:8px;padding:12px">
+              <strong>Hướng dẫn Cloudinary:</strong> Đăng ký tại cloudinary.com → vào Dashboard lấy Cloud Name
+              → vào Settings → Upload → Add upload preset → chọn Unsigned → đặt tên <code>tgdv_news</code> → Save.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </main>
+</div><!-- /app -->
+
+<!-- ================================================================
+     MODAL
+================================================================ -->
+<div id="modal-overlay" onclick="closeModalOnOverlay(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Modal</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast-container"></div>
+
+<!-- ================================================================
+     JAVASCRIPT
+================================================================ -->
+<script>
+// ================================================================
+// CONFIG
+// ================================================================
+const SUPABASE_URL = 'https://ittqijxgazrcpxrwsojc.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml0dHFpanhnYXpyY3B4cndzb2pjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUzODYwNDksImV4cCI6MjExMDk2MjA0OX0.gcwkqvFWxl_hQgbN5mR1P1mdGfPeOnLPlUd5ZjbY54A';
+
+const NEWS_CATEGORIES = {
+  thong_bao:'Thông báo', hoat_dong:'Hoạt động', chinh_sach:'Chính sách',
+  guong_dien_hinh:'Gương điển hình', huong_dan_nghiep_vu:'Hướng dẫn NV'
+};
+const DOC_CATEGORIES = {
+  van_ban_chi_dao:'Văn bản chỉ đạo', nghi_quyet:'Nghị quyết', chi_thi:'Chỉ thị',
+  huong_dan:'Hướng dẫn', thong_bao:'Thông báo', cam_nang_phap_luat:'Cẩm nang PL'
+};
+const FEEDBACK_TYPES = {
+  an_ninh:'An ninh TT', moi_truong:'Môi trường', chinh_sach:'Chính sách',
+  thu_tuc_hanh_chinh:'TTHC', khac:'Khác'
+};
+const FB_STATUS = {moi:'Mới',dang_xu_ly:'Đang xử lý',da_xu_ly:'Đã xử lý'};
+const PAGE_SIZE = 20;
+
+// ================================================================
+// STATE
+// ================================================================
+let sb, currentUser, currentSection='dashboard', statsTab='week';
+let allNews=[], allDocs=[], allNewsletters=[], allConferences=[], allFeedback=[];
+let statsChart = null;
+let statYear = new Date().getFullYear();
+let statMonth = new Date().getMonth()+1;
+let cloudName = localStorage.getItem('cl_cloud_name')||'';
+let cloudPreset = localStorage.getItem('cl_preset')||'tgdv_news';
+let newsPg=1, totalNewsPages=1;
+
+// ================================================================
+// INIT
+// ================================================================
+document.addEventListener('DOMContentLoaded', async()=>{
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const {data:{session}} = await sb.auth.getSession();
+  if(session){
+    currentUser = session.user;
+    showApp();
+  } else {
+    document.getElementById('login-screen').style.display='flex';
+  }
+});
+
+// ================================================================
+// AUTH
+// ================================================================
+async function handleLogin(e){
+  e.preventDefault();
+  const btn = document.getElementById('btn-login');
+  const errEl = document.getElementById('login-error');
+  const email = document.getElementById('login-email').value;
+  const pass = document.getElementById('login-password').value;
+  btn.disabled=true; btn.textContent='Đang đăng nhập...';
+  errEl.style.display='none';
+  const {data,error} = await sb.auth.signInWithPassword({email,password:pass});
+  if(error){
+    errEl.textContent='❌ '+error.message; errEl.style.display='block';
+    btn.disabled=false; btn.textContent='Đăng nhập'; return;
+  }
+  currentUser=data.user; showApp();
+}
+
+async function handleLogout(){
+  await sb.auth.signOut();
+  location.reload();
+}
+
+function showApp(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('user-info-label').textContent = currentUser?.email||'Admin';
+  // load cloudinary config
+  document.getElementById('cl-cloud-name').value = cloudName;
+  document.getElementById('cl-preset').value = cloudPreset;
+  // init stat year select
+  initStatYears();
+  navigate('dashboard');
+  loadBadges();
+}
+
+// ================================================================
+// NAVIGATION
+// ================================================================
+const SECTION_TITLES = {
+  dashboard:'🏠 Tổng quan', 'quick-post':'⚡ Đăng tin nhanh',
+  news:'📰 Tin tức', documents:'📄 Văn bản', newsletters:'📋 Bản tin chi bộ',
+  conferences:'🏛️ Tài liệu Hội nghị', feedback:'💬 Phản ánh', surveys:'📊 Khảo sát',
+  statistics:'📈 Thống kê', settings:'⚙️ Cài đặt'
+};
+
+function navigate(section){
+  currentSection=section;
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById(`section-${section}`).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const navEl=document.getElementById(`nav-${section}`);
+  if(navEl)navEl.classList.add('active');
+  document.getElementById('header-title').textContent = SECTION_TITLES[section]||section;
+  loadSection(section);
+}
+
+function refreshCurrentSection(){ loadSection(currentSection); }
+
+function loadSection(s){
+  if(s==='dashboard') loadDashboard();
+  else if(s==='news') loadNews();
+  else if(s==='documents') loadDocuments();
+  else if(s==='newsletters') loadNewsletters();
+  else if(s==='conferences') loadConferences();
+  else if(s==='feedback') loadFeedback();
+  else if(s==='surveys') loadSurveys();
+  else if(s==='statistics') loadStatistics();
+  else if(s==='settings') loadSettings();
+}
+
+// ================================================================
+// DASHBOARD
+// ================================================================
+async function loadDashboard(){
+  // Counts
+  const [n,d,fb,sv] = await Promise.all([
+    sb.from('news').select('id',{count:'exact'}),
+    sb.from('documents').select('id',{count:'exact'}),
+    sb.from('feedback').select('id',{count:'exact'}).eq('status','moi'),
+    sb.from('surveys').select('id',{count:'exact'}).eq('is_active',true),
+  ]);
+  document.getElementById('stat-news').textContent = n.count??0;
+  document.getElementById('stat-docs').textContent = d.count??0;
+  document.getElementById('stat-feedback').textContent = fb.count??0;
+  document.getElementById('stat-surveys').textContent = sv.count??0;
+
+  // Recent news
+  const {data:rn} = await sb.from('news').select('id,title,category,is_published,created_at')
+    .order('created_at',{ascending:false}).limit(8);
+  const rnEl = document.getElementById('recent-news-list');
+  if(!rn||!rn.length){ rnEl.innerHTML=emptyState('Chưa có tin tức'); return; }
+  rnEl.innerHTML = rn.map(n=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1;overflow:hidden">
+        <div class="truncate" style="font-size:13px;font-weight:500">${esc(n.title)}</div>
+        <div style="font-size:11px;color:var(--text3)">${NEWS_CATEGORIES[n.category]||n.category} · ${fmtDate(n.created_at)}</div>
+      </div>
+      ${n.is_published?badge('Đã đăng','green'):badge('Nháp','gray')}
+    </div>`).join('');
+
+  // Recent feedback
+  const {data:rf} = await sb.from('feedback').select('id,title,category,status,created_at')
+    .eq('status','moi').order('created_at',{ascending:false}).limit(6);
+  const rfEl = document.getElementById('recent-feedback-list');
+  if(!rf||!rf.length){ rfEl.innerHTML=`<div style="color:var(--text3);font-size:13px;text-align:center;padding:16px">✅ Không có phản ánh mới</div>`; return; }
+  rfEl.innerHTML = rf.map(f=>`
+    <div class="feedback-card status-${f.status}" onclick="openFeedbackDetail('${f.id}')">
+      <div style="font-weight:600;font-size:13px">${esc(f.title)}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:3px">${FEEDBACK_TYPES[f.category]||f.category} · ${fmtDate(f.created_at)}</div>
+    </div>`).join('');
+}
+
+// ================================================================
+// NEWS CRUD
+// ================================================================
+async function loadNews(pg=1){
+  newsPg=pg;
+  const wrap = document.getElementById('news-table-wrap');
+  wrap.innerHTML = loadingHtml();
+  const {data,error,count} = await sb.from('news')
+    .select('id,title,category,is_published,created_at,updated_at',{count:'exact'})
+    .order('created_at',{ascending:false})
+    .range((pg-1)*PAGE_SIZE, pg*PAGE_SIZE-1);
+  if(error){ wrap.innerHTML=`<div class="card-body" style="color:red">${error.message}</div>`; return; }
+  allNews = data||[];
+  totalNewsPages = Math.ceil((count||0)/PAGE_SIZE);
+  renderNewsTable(allNews);
+  renderNewsPagination(pg,count);
+}
+
+function filterNews(){
+  const q = document.getElementById('news-search').value.toLowerCase();
+  const cat = document.getElementById('news-cat-filter').value;
+  const st = document.getElementById('news-status-filter').value;
+  const filtered = allNews.filter(n=>{
+    if(q && !n.title.toLowerCase().includes(q)) return false;
+    if(cat && n.category!==cat) return false;
+    if(st==='published' && !n.is_published) return false;
+    if(st==='draft' && n.is_published) return false;
+    return true;
+  });
+  renderNewsTable(filtered);
+}
+
+function renderNewsTable(rows){
+  const wrap = document.getElementById('news-table-wrap');
+  if(!rows.length){ wrap.innerHTML=emptyState('Không có tin tức nào'); return; }
+  wrap.innerHTML = `<table>
+    <thead><tr><th>#</th><th>Tiêu đề</th><th>Danh mục</th><th>Trạng thái</th><th>Ngày tạo</th><th style="text-align:right">Thao tác</th></tr></thead>
+    <tbody>${rows.map((n,i)=>`<tr>
+      <td style="color:var(--text3)">${i+1}</td>
+      <td><div class="truncate" style="max-width:320px;font-weight:500">${esc(n.title)}</div></td>
+      <td><span style="font-size:12px">${NEWS_CATEGORIES[n.category]||n.category}</span></td>
+      <td>${n.is_published?badge('Đã đăng','green'):badge('Nháp','gray')}</td>
+      <td style="color:var(--text2);font-size:12px">${fmtDate(n.created_at)}</td>
+      <td><div class="td-actions">
+        <button class="btn-icon" title="Sửa" onclick="openNewsModal('${n.id}')">✏️</button>
+        <button class="btn-icon" title="Toggle xuất bản" onclick="togglePublish('news','${n.id}',${n.is_published})">${n.is_published?'👁️':'🙈'}</button>
+        <button class="btn-icon danger" title="Xóa" onclick="deleteItem('news','${n.id}','loadNews')">🗑️</button>
+      </div></td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function renderNewsPagination(pg,total){
+  const pgEl = document.getElementById('news-pagination');
+  const pages = Math.ceil((total||0)/PAGE_SIZE);
+  if(pages<=1){ pgEl.innerHTML=''; return; }
+  let html='<div class="pagination">';
+  html+=`<button class="page-btn" ${pg===1?'disabled':''} onclick="loadNews(${pg-1})">◀</button>`;
+  for(let i=1;i<=pages;i++){
+    if(i===1||i===pages||Math.abs(i-pg)<=1){
+      html+=`<button class="page-btn ${i===pg?'active':''}" onclick="loadNews(${i})">${i}</button>`;
+    } else if(Math.abs(i-pg)===2){ html+=`<span style="padding:0 4px">…</span>`; }
+  }
+  html+=`<button class="page-btn" ${pg===pages?'disabled':''} onclick="loadNews(${pg+1})">▶</button>`;
+  html+=`</div><div style="text-align:center;font-size:12px;color:var(--text3);margin-top:4px">Tổng: ${total} tin</div>`;
+  pgEl.innerHTML=html;
+}
+
+async function openNewsModal(id){
+  let item=null;
+  if(id){
+    const {data}=await sb.from('news').select('*').eq('id',id).single();
+    item=data;
+  }
+  const title = id?'Sửa tin tức':'Thêm tin tức mới';
+  const imgPreviewStyle = item?.cover_image_url?'display:block':'display:none';
+  document.getElementById('modal-title').textContent=title;
+  document.getElementById('modal-body').innerHTML=`
+    <div class="form-grid">
+      <div class="form-group full">
+        <label class="form-label">Tiêu đề <span class="req">*</span></label>
+        <input type="text" class="form-control" id="m-title" value="${esc(item?.title||'')}" placeholder="Tiêu đề bài viết...">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Danh mục</label>
+        <select class="form-control" id="m-category">${Object.entries(NEWS_CATEGORIES).map(([v,l])=>
+          `<option value="${v}" ${item?.category===v?'selected':''}>${l}</option>`).join('')}</select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Link ngoài</label>
+        <input type="url" class="form-control" id="m-link" value="${esc(item?.external_link||'')}" placeholder="https://...">
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Tóm tắt</label>
+        <textarea class="form-control" id="m-summary" rows="2">${esc(item?.summary||'')}</textarea>
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Nội dung</label>
+        <textarea class="form-control" id="m-content" rows="6">${esc(item?.content||'')}</textarea>
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Ảnh bìa</label>
+        <div class="img-upload-box" onclick="triggerCloudinaryModal()">☁️ <strong>Nhấn để tải ảnh lên Cloudinary</strong></div>
+        <div class="img-url-input" style="margin-top:8px">
+          <input type="url" class="form-control" id="m-image-url" value="${esc(item?.cover_image_url||'')}"
+            placeholder="https://res.cloudinary.com/..." oninput="previewImage('m-image-url','m-img-preview')">
+        </div>
+        <img id="m-img-preview" class="img-preview" style="${imgPreviewStyle};margin-top:8px" src="${item?.cover_image_url||''}">
+      </div>
+      <div class="form-group">
+        <label class="form-check">
+          <input type="checkbox" id="m-published" ${item?.is_published?'checked':''}>
+          <span>Xuất bản (hiển thị trên Mini App)</span>
+        </label>
+      </div>
+    </div>`;
+  document.getElementById('modal-footer').innerHTML=`
+    <button class="btn btn-secondary" onclick="closeModal()">Hủy</button>
+    <button class="btn btn-primary" onclick="saveNews('${id||''}')">💾 Lưu</button>`;
+  openModal();
+}
+
+async function saveNews(id){
+  const title = document.getElementById('m-title').value.trim();
+  if(!title){ showToast('Vui lòng nhập tiêu đề','error'); return; }
+  const pub = document.getElementById('m-published').checked;
+  const payload = {
+    title, summary:document.getElementById('m-summary').value.trim(),
+    content:document.getElementById('m-content').value.trim(),
+    category:document.getElementById('m-category').value,
+    external_link:document.getElementById('m-link').value.trim()||null,
+    cover_image_url:document.getElementById('m-image-url').value.trim()||null,
+    is_published:pub, updated_at:new Date().toISOString(),
+    ...(pub&&!id?{published_at:new Date().toISOString()}:{})
+  };
+  let err;
+  if(id){ ({error:err}=await sb.from('news').update(payload).eq('id',id)); }
+  else { ({error:err}=await sb.from('news').insert(payload)); }
+  if(err){ showToast('Lỗi: '+err.message,'error'); return; }
+  showToast(id?'Đã cập nhật tin tức!':'Đã đăng tin mới!','success');
+  closeModal(); loadNews();
+}
+
+// ================================================================
+// QUICK POST
+// ================================================================
+async function handleQuickPost(e){
+  e.preventDefault();
+  const btn=document.getElementById('btn-quick-post');
+  btn.disabled=true; btn.textContent='Đang đăng...';
+  const pub = document.getElementById('qp-published').checked;
+  const payload={
+    title:document.getElementById('qp-title').value.trim(),
+    summary:document.getElementById('qp-summary').value.trim()||null,
+    content:document.getElementById('qp-content').value.trim()||null,
+    category:document.getElementById('qp-category').value,
+    external_link:document.getElementById('qp-link').value.trim()||null,
+    cover_image_url:document.getElementById('qp-image-url').value.trim()||null,
+    is_published:pub,
+    ...(pub?{published_at:new Date().toISOString()}:{})
+  };
+  if(!payload.title){ showToast('Nhập tiêu đề trước!','error'); btn.disabled=false; btn.textContent='✅ Đăng tin'; return; }
+  const {error}=await sb.from('news').insert(payload);
+  btn.disabled=false; btn.textContent='✅ Đăng tin';
+  if(error){ showToast('Lỗi: '+error.message,'error'); return; }
+  showToast('✅ Đăng tin thành công!','success');
+  clearQuickPostForm();
+}
+
+function clearQuickPostForm(){
+  document.getElementById('quick-post-form').reset();
+  document.getElementById('qp-image-url').value='';
+  document.getElementById('qp-img-preview').style.display='none';
+}
+function clearQpImage(){ document.getElementById('qp-image-url').value=''; document.getElementById('qp-img-preview').style.display='none'; }
+
+// ================================================================
+// DOCUMENTS
+// ================================================================
+async function loadDocuments(){
+  const wrap=document.getElementById('docs-table-wrap');
+  wrap.innerHTML=loadingHtml();
+  const {data,error}=await sb.from('documents').select('*').order('created_at',{ascending:false});
+  if(error){ wrap.innerHTML=`<div class="card-body" style="color:red">${error.message}</div>`; return; }
+  allDocs=data||[];
+  renderDocsTable(allDocs);
+}
+function filterDocs(){
+  const q=document.getElementById('doc-search').value.toLowerCase();
+  const cat=document.getElementById('doc-cat-filter').value;
+  renderDocsTable(allDocs.filter(d=>(!q||d.title.toLowerCase().includes(q))&&(!cat||d.category===cat)));
+}
+function renderDocsTable(rows){
+  const wrap=document.getElementById('docs-table-wrap');
+  if(!rows.length){ wrap.innerHTML=emptyState('Chưa có văn bản nào'); return; }
+  wrap.innerHTML=`<table><thead><tr><th>#</th><th>Tiêu đề</th><th>Loại</th><th>Trạng thái</th><th>Ngày tạo</th><th style="text-align:right">Thao tác</th></tr></thead>
+  <tbody>${rows.map((d,i)=>`<tr>
+    <td style="color:var(--text3)">${i+1}</td>
+    <td><div class="truncate" style="max-width:280px;font-weight:500">${esc(d.title)}</div></td>
+    <td><span style="font-size:12px">${DOC_CATEGORIES[d.category]||d.category}</span></td>
+    <td>${d.is_published?badge('Đã đăng','green'):badge('Nháp','gray')}</td>
+    <td style="font-size:12px;color:var(--text2)">${fmtDate(d.created_at)}</td>
+    <td><div class="td-actions">
+      <button class="btn-icon" onclick="openDocModal('${d.id}')">✏️</button>
+      <button class="btn-icon" onclick="togglePublish('documents','${d.id}',${d.is_published})">${d.is_published?'👁️':'🙈'}</button>
+      <button class="btn-icon danger" onclick="deleteItem('documents','${d.id}','loadDocuments')">🗑️</button>
+    </div></td>
+  </tr>`).join('')}</tbody></table>`;
+}
+async function openDocModal(id){
+  let item=null;
+  if(id){ const {data}=await sb.from('documents').select('*').eq('id',id).single(); item=data; }
+  document.getElementById('modal-title').textContent=id?'Sửa văn bản':'Thêm văn bản mới';
+  document.getElementById('modal-body').innerHTML=`
+    <div class="form-grid">
+      <div class="form-group full">
+        <label class="form-label">Tiêu đề <span class="req">*</span></label>
+        <input type="text" class="form-control" id="m-title" value="${esc(item?.title||'')}" placeholder="Tên văn bản...">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Loại văn bản</label>
+        <select class="form-control" id="m-category">${Object.entries(DOC_CATEGORIES).map(([v,l])=>
+          `<option value="${v}" ${item?.category===v?'selected':''}>${l}</option>`).join('')}</select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Link xem/tải</label>
+        <input type="url" class="form-control" id="m-link" value="${esc(item?.external_link||'')}" placeholder="https://...">
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Tóm tắt</label>
+        <textarea class="form-control" id="m-summary" rows="2">${esc(item?.summary||'')}</textarea>
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Nội dung</label>
+        <textarea class="form-control" id="m-content" rows="4">${esc(item?.content||'')}</textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-check"><input type="checkbox" id="m-published" ${item?.is_published?'checked':''}>
+          <span>Xuất bản</span></label>
+      </div>
+    </div>`;
+  document.getElementById('modal-footer').innerHTML=`
+    <button class="btn btn-secondary" onclick="closeModal()">Hủy</button>
+    <button class="btn btn-primary" onclick="saveDoc('${id||''}')">💾 Lưu</button>`;
+  openModal();
+}
+async function saveDoc(id){
+  const title=document.getElementById('m-title').value.trim();
+  if(!title){ showToast('Vui lòng nhập tiêu đề','error'); return; }
+  const pub=document.getElementById('m-published').checked;
+  const payload={title,summary:document.getElementById('m-summary').value.trim(),
+    content:document.getElementById('m-content').value.trim(),
+    category:document.getElementById('m-category').value,
+    external_link:document.getElementById('m-link').value.trim()||null,
+    is_published:pub,updated_at:new Date().toISOString()};
+  let err;
+  if(id){({error:err}=await sb.from('documents').update(payload).eq('id',id));}
+  else{({error:err}=await sb.from('documents').insert(payload));}
+  if(err){ showToast('Lỗi: '+err.message,'error'); return; }
+  showToast(id?'Đã cập nhật!':'Đã thêm văn bản!','success');
+  closeModal(); loadDocuments();
+}
+
+// ================================================================
+// NEWSLETTERS
+// ================================================================
+async function loadNewsletters(){
+  const wrap=document.getElementById('nl-table-wrap');
+  wrap.innerHTML=loadingHtml();
+  const {data,error}=await sb.from('newsletters').select('*').order('created_at',{ascending:false});
+  if(error){ wrap.innerHTML=`<div class="card-body" style="color:red">${error.message}</div>`; return; }
+  allNewsletters=data||[];
+  if(!allNewsletters.length){ wrap.innerHTML=emptyState('Chưa có bản tin nào'); return; }
+  wrap.innerHTML=`<table><thead><tr><th>#</th><th>Tiêu đề</th><th>Số bản tin</th><th>Trạng thái</th><th>Ngày tạo</th><th style="text-align:right">Thao tác</th></tr></thead>
+  <tbody>${allNewsletters.map((n,i)=>`<tr>
+    <td style="color:var(--text3)">${i+1}</td>
+    <td><div class="truncate" style="max-width:300px;font-weight:500">${esc(n.title)}</div></td>
+    <td><span style="font-size:12px">${esc(n.issue_number||'—')}</span></td>
+    <td>${n.is_published?badge('Đã đăng','green'):badge('Nháp','gray')}</td>
+    <td style="font-size:12px;color:var(--text2)">${fmtDate(n.created_at)}</td>
+    <td><div class="td-actions">
+      <button class="btn-icon" onclick="openNewsletterModal('${n.id}')">✏️</button>
+      <button class="btn-icon" onclick="togglePublish('newsletters','${n.id}',${n.is_published})">${n.is_published?'👁️':'🙈'}</button>
+      <button class="btn-icon danger" onclick="deleteItem('newsletters','${n.id}','loadNewsletters')">🗑️</button>
+    </div></td>
+  </tr>`).join('')}</tbody></table>`;
+}
+async function openNewsletterModal(id){
+  let item=null;
+  if(id){const {data}=await sb.from('newsletters').select('*').eq('id',id).single();item=data;}
+  document.getElementById('modal-title').textContent=id?'Sửa bản tin':'Thêm bản tin mới';
+  document.getElementById('modal-body').innerHTML=`
+    <div class="form-grid">
+      <div class="form-group full"><label class="form-label">Tiêu đề <span class="req">*</span></label>
+        <input type="text" class="form-control" id="m-title" value="${esc(item?.title||'')}" placeholder="Tên bản tin..."></div>
+      <div class="form-group"><label class="form-label">Số bản tin</label>
+        <input type="text" class="form-control" id="m-issue" value="${esc(item?.issue_number||'')}" placeholder="Số 01/2024..."></div>
+      <div class="form-group"><label class="form-check"><input type="checkbox" id="m-published" ${item?.is_published?'checked':''}>
+        <span>Xuất bản</span></label></div>
+      <div class="form-group full"><label class="form-label">Tóm tắt</label>
+        <textarea class="form-control" id="m-summary" rows="2">${esc(item?.summary||'')}</textarea></div>
+      <div class="form-group full"><label class="form-label">Nội dung</label>
+        <textarea class="form-control" id="m-content" rows="6">${esc(item?.content||'')}</textarea></div>
+    </div>`;
+  document.getElementById('modal-footer').innerHTML=`
+    <button class="btn btn-secondary" onclick="closeModal()">Hủy</button>
+    <button class="btn btn-primary" onclick="saveNewsletter('${id||''}')">💾 Lưu</button>`;
+  openModal();
+}
+async function saveNewsletter(id){
+  const title=document.getElementById('m-title').value.trim();
+  if(!title){showToast('Nhập tiêu đề trước!','error');return;}
+  const pub=document.getElementById('m-published').checked;
+  const payload={title,issue_number:document.getElementById('m-issue').value.trim()||null,
+    summary:document.getElementById('m-summary').value.trim(),
+    content:document.getElementById('m-content').value.trim(),
+    is_published:pub,updated_at:new Date().toISOString()};
+  let err;
+  if(id){({error:err}=await sb.from('newsletters').update(payload).eq('id',id));}
+  else{({error:err}=await sb.from('newsletters').insert(payload));}
+  if(err){showToast('Lỗi: '+err.message,'error');return;}
+  showToast('Đã lưu bản tin!','success'); closeModal(); loadNewsletters();
+}
+
+// ================================================================
+// CONFERENCES
+// ================================================================
+async function loadConferences(){
+  const wrap=document.getElementById('conf-table-wrap');
+  wrap.innerHTML=loadingHtml();
+  const {data,error}=await sb.from('conferences').select('*').order('created_at',{ascending:false});
+  if(error){ wrap.innerHTML=`<div class="card-body" style="color:red">${error.message}</div>`; return; }
+  allConferences=data||[];
+  if(!allConferences.length){ wrap.innerHTML=emptyState('Chưa có hội nghị nào'); return; }
+  wrap.innerHTML=`<table><thead><tr><th>#</th><th>Tên hội nghị</th><th>Ngày HN</th><th>Trạng thái</th><th>Ngày tạo</th><th style="text-align:right">Thao tác</th></tr></thead>
+  <tbody>${allConferences.map((c,i)=>`<tr>
+    <td style="color:var(--text3)">${i+1}</td>
+    <td><div class="truncate" style="max-width:280px;font-weight:500">${esc(c.title)}</div></td>
+    <td style="font-size:12px">${c.conference_date?c.conference_date:'—'}</td>
+    <td>${c.is_published?badge('Đã đăng','green'):badge('Nháp','gray')}</td>
+    <td style="font-size:12px;color:var(--text2)">${fmtDate(c.created_at)}</td>
+    <td><div class="td-actions">
+      <button class="btn-icon" onclick="openConferenceModal('${c.id}')">✏️</button>
+      <button class="btn-icon" onclick="togglePublish('conferences','${c.id}',${c.is_published})">${c.is_published?'👁️':'🙈'}</button>
+      <button class="btn-icon danger" onclick="deleteItem('conferences','${c.id}','loadConferences')">🗑️</button>
+    </div></td>
+  </tr>`).join('')}</tbody></table>`;
+}
+async function openConferenceModal(id){
+  let item=null;
+  if(id){const {data}=await sb.from('conferences').select('*').eq('id',id).single();item=data;}
+  document.getElementById('modal-title').textContent=id?'Sửa hội nghị':'Thêm hội nghị mới';
+  document.getElementById('modal-body').innerHTML=`
+    <div class="form-grid">
+      <div class="form-group full"><label class="form-label">Tên hội nghị <span class="req">*</span></label>
+        <input type="text" class="form-control" id="m-title" value="${esc(item?.title||'')}" placeholder="Tên hội nghị..."></div>
+      <div class="form-group"><label class="form-label">Ngày diễn ra</label>
+        <input type="date" class="form-control" id="m-date" value="${item?.conference_date||''}"></div>
+      <div class="form-group"><label class="form-check"><input type="checkbox" id="m-published" ${item?.is_published?'checked':''}>
+        <span>Xuất bản</span></label></div>
+      <div class="form-group full"><label class="form-label">Mô tả</label>
+        <textarea class="form-control" id="m-content" rows="4">${esc(item?.description||'')}</textarea></div>
+    </div>`;
+  document.getElementById('modal-footer').innerHTML=`
+    <button class="btn btn-secondary" onclick="closeModal()">Hủy</button>
+    <button class="btn btn-primary" onclick="saveConference('${id||''}')">💾 Lưu</button>`;
+  openModal();
+}
+async function saveConference(id){
+  const title=document.getElementById('m-title').value.trim();
+  if(!title){showToast('Nhập tên hội nghị!','error');return;}
+  const pub=document.getElementById('m-published').checked;
+  const payload={title,description:document.getElementById('m-content').value.trim(),
+    conference_date:document.getElementById('m-date').value||null,
+    is_published:pub,updated_at:new Date().toISOString()};
+  let err;
+  if(id){({error:err}=await sb.from('conferences').update(payload).eq('id',id));}
+  else{({error:err}=await sb.from('conferences').insert(payload));}
+  if(err){showToast('Lỗi: '+err.message,'error');return;}
+  showToast('Đã lưu hội nghị!','success'); closeModal(); loadConferences();
+}
+
+// ================================================================
+// FEEDBACK
+// ================================================================
+async function loadFeedback(){
+  const listEl=document.getElementById('feedback-list');
+  listEl.innerHTML=loadingHtml();
+  const {data,error}=await sb.from('feedback').select('*').order('created_at',{ascending:false});
+  if(error){listEl.innerHTML=`<div style="color:red">${error.message}</div>`;return;}
+  allFeedback=data||[];
+  renderFeedbackList(allFeedback);
+  // Update badge
+  const newCount=allFeedback.filter(f=>f.status==='moi').length;
+  const badge=document.getElementById('badge-feedback');
+  if(newCount>0){badge.textContent=newCount;badge.style.display='block';}
+  else{badge.style.display='none';}
+}
+function filterFeedback(){
+  const st=document.getElementById('fb-status-filter').value;
+  const cat=document.getElementById('fb-cat-filter').value;
+  renderFeedbackList(allFeedback.filter(f=>(!st||f.status===st)&&(!cat||f.category===cat)));
+}
+function renderFeedbackList(rows){
+  const listEl=document.getElementById('feedback-list');
+  if(!rows.length){listEl.innerHTML=emptyState('Không có phản ánh nào');return;}
+  const statusColors={moi:'red',dang_xu_ly:'yellow',da_xu_ly:'green'};
+  listEl.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    ${rows.map(f=>`
+    <div class="feedback-card status-${f.status}" onclick="openFeedbackDetail('${f.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <strong style="font-size:14px;flex:1">${esc(f.title)}</strong>
+        ${badge(FB_STATUS[f.status]||f.status,statusColors[f.status]||'gray')}
+      </div>
+      <div style="margin-top:6px;font-size:12px;color:var(--text2)">
+        ${FEEDBACK_TYPES[f.category]||f.category}
+        ${f.full_name&&!f.is_anonymous?' · '+esc(f.full_name):'· Ẩn danh'}
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">${fmtDate(f.created_at)}</div>
+    </div>`).join('')}
+  </div>`;
+}
+async function openFeedbackDetail(id){
+  const {data:f}=await sb.from('feedback').select('*').eq('id',id).single();
+  if(!f)return;
+  const statusOpts=['moi','dang_xu_ly','da_xu_ly'].map(s=>
+    `<option value="${s}" ${f.status===s?'selected':''}>${FB_STATUS[s]}</option>`).join('');
+  document.getElementById('modal-title').textContent='Chi tiết phản ánh';
+  document.getElementById('modal-body').innerHTML=`
+    <div style="background:#f8fafc;border-radius:10px;padding:16px;margin-bottom:16px">
+      <h4 style="margin-bottom:8px">${esc(f.title)}</h4>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px">
+        📌 ${FEEDBACK_TYPES[f.category]||f.category} ·
+        ${f.is_anonymous?'Ẩn danh':`${esc(f.full_name||'')} ${f.phone?'('+esc(f.phone)+')':''}`} ·
+        ${fmtDate(f.created_at)}
+      </div>
+      <p style="font-size:14px;white-space:pre-wrap">${esc(f.content||'')}</p>
+      ${f.attachment_url?`<a href="${f.attachment_url}" target="_blank" class="btn btn-sm btn-secondary" style="margin-top:8px">📎 Xem tệp đính kèm</a>`:''}
+    </div>
+    <div class="form-group">
+      <label class="form-label">Trạng thái xử lý</label>
+      <select class="form-control" id="fb-status">${statusOpts}</select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Phản hồi của Ban</label>
+      <textarea class="form-control" id="fb-response" rows="4" placeholder="Nhập nội dung phản hồi...">${esc(f.admin_response||'')}</textarea>
+    </div>`;
+  document.getElementById('modal-footer').innerHTML=`
+    <button class="btn btn-secondary" onclick="closeModal()">Đóng</button>
+    <button class="btn btn-primary" onclick="saveFeedbackResponse('${f.id}')">💾 Lưu phản hồi</button>`;
+  openModal();
+}
+async function saveFeedbackResponse(id){
+  const status=document.getElementById('fb-status').value;
+  const response=document.getElementById('fb-response').value.trim();
+  const {error}=await sb.from('feedback').update({
+    status,admin_response:response,
+    responded_at:response?new Date().toISOString():null
+  }).eq('id',id);
+  if(error){showToast('Lỗi: '+error.message,'error');return;}
+  showToast('Đã lưu phản hồi!','success'); closeModal(); loadFeedback();
+}
+
+// ================================================================
+// SURVEYS
+// ================================================================
+async function loadSurveys(){
+  const listEl=document.getElementById('survey-list');
+  listEl.innerHTML=loadingHtml();
+  const {data,error}=await sb.from('surveys').select('*').order('created_at',{ascending:false});
+  if(error){listEl.innerHTML=`<div style="color:red">${error.message}</div>`;return;}
+  if(!data||!data.length){listEl.innerHTML=emptyState('Chưa có khảo sát nào');return;}
+  listEl.innerHTML=data.map(s=>`
+    <div style="border:1.5px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;cursor:pointer"
+      onclick="loadSurveyResults('${s.id}','${esc(s.title)}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <strong style="font-size:14px">${esc(s.title)}</strong>
+        ${s.is_active?badge('Đang mở','green'):badge('Đã đóng','gray')}
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-top:4px">${fmtDate(s.created_at)}</div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();openSurveyModal('${s.id}')">✏️</button>
+        <button class="btn btn-sm ${s.is_active?'btn-secondary':'btn-success'}"
+          onclick="event.stopPropagation();toggleSurvey('${s.id}',${s.is_active})">
+          ${s.is_active?'🔒 Đóng':'🔓 Mở'}</button>
+        <button class="btn btn-sm btn-secondary" style="color:var(--danger)" onclick="event.stopPropagation();deleteItem('surveys','${s.id}','loadSurveys')">🗑️</button>
+      </div>
+    </div>`).join('');
+}
+async function loadSurveyResults(surveyId,surveyTitle){
+  const resEl=document.getElementById('survey-results');
+  document.getElementById('survey-result-title').textContent=`📈 ${surveyTitle}`;
+  resEl.innerHTML=loadingHtml();
+  const [{data:survey},{data:responses}]=await Promise.all([
+    sb.from('surveys').select('*').eq('id',surveyId).single(),
+    sb.from('survey_responses').select('*').eq('survey_id',surveyId)
+  ]);
+  if(!survey||!responses){resEl.innerHTML=emptyState('Không có dữ liệu');return;}
+  const qs=survey.questions||[];
+  const totalResp=responses.length;
+  if(!totalResp){resEl.innerHTML=`<div style="text-align:center;color:var(--text3);padding:24px">📭 Chưa có người trả lời</div>`;return;}
+  resEl.innerHTML=`<div style="font-size:13px;color:var(--text2);margin-bottom:16px">Tổng: <strong>${totalResp}</strong> câu trả lời</div>
+  ${qs.map((q,qi)=>{
+    if(q.type==='text') return `<div class="survey-chart-wrap"><strong style="font-size:13px">${qi+1}. ${esc(q.text)}</strong>
+      <div style="margin-top:10px">${responses.slice(0,10).map(r=>`<div style="font-size:12px;border-left:3px solid var(--border);padding-left:8px;margin-bottom:6px">${esc((r.answers||{})[qi]||'')}</div>`).join('')}</div></div>`;
+    const opts=q.options||[];
+    const counts={};opts.forEach(o=>{counts[o]=0;});
+    responses.forEach(r=>{const ans=(r.answers||{})[qi];if(ans&&counts[ans]!==undefined)counts[ans]++;});
+    return `<div class="survey-chart-wrap"><strong style="font-size:13px">${qi+1}. ${esc(q.text)}</strong>
+      <div style="margin-top:12px">${opts.map(o=>{
+        const pct=totalResp?Math.round((counts[o]/totalResp)*100):0;
+        return `<div class="bar-row"><div class="bar-label" title="${esc(o)}">${esc(o)}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+          <div class="bar-count">${counts[o]} (${pct}%)</div></div>`;}).join('')}</div></div>`;
+  }).join('')}`;
+}
+async function toggleSurvey(id,isActive){
+  const {error}=await sb.from('surveys').update({is_active:!isActive}).eq('id',id);
+  if(error){showToast('Lỗi: '+error.message,'error');return;}
+  showToast(isActive?'Đã đóng khảo sát':'Đã mở khảo sát','success'); loadSurveys();
+}
+async function openSurveyModal(id){
+  let item=null;
+  if(id){const {data}=await sb.from('surveys').select('*').eq('id',id).single();item=data;}
+  const qs=item?.questions||[{text:'',type:'single',options:['']}];
+  document.getElementById('modal-title').textContent=id?'Sửa khảo sát':'Tạo khảo sát mới';
+  const renderQ=()=>{
+    return qs.map((q,i)=>`
+      <div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px" id="q-${i}">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+          <span style="font-weight:600;min-width:24px">${i+1}.</span>
+          <input type="text" class="form-control" value="${esc(q.text||'')}" placeholder="Nội dung câu hỏi..."
+            id="qt-${i}" style="flex:1">
+          <select class="form-control" id="qtype-${i}" style="width:130px" onchange="changeQType(${i})">
+            <option value="single" ${q.type==='single'?'selected':''}>Một đáp án</option>
+            <option value="multi" ${q.type==='multi'?'selected':''}>Nhiều đáp án</option>
+            <option value="text" ${q.type==='text'?'selected':''}>Văn bản tự do</option>
+          </select>
+          <button class="btn-icon danger" onclick="removeQuestion(${i})">🗑️</button>
+        </div>
+        ${q.type!=='text'?`<div id="opts-${i}">${(q.options||[]).map((o,j)=>`
+          <div style="display:flex;gap:6px;margin-bottom:5px">
+            <input type="text" class="form-control" value="${esc(o)}" placeholder="Lựa chọn ${j+1}..."
+              id="opt-${i}-${j}" style="flex:1">
+            <button class="btn-icon danger" onclick="removeOption(${i},${j})">✕</button>
+          </div>`).join('')}
+          <button class="btn btn-sm btn-secondary" onclick="addOption(${i})">+ Thêm lựa chọn</button>
+        </div>`:'<div style="font-size:12px;color:var(--text3)">Người dùng sẽ nhập câu trả lời tự do</div>'}
+      </div>`).join('');
+  };
+  document.getElementById('modal-body').innerHTML=`
+    <div class="form-group"><label class="form-label">Tiêu đề khảo sát <span class="req">*</span></label>
+      <input type="text" class="form-control" id="sv-title" value="${esc(item?.title||'')}" placeholder="Tên khảo sát..."></div>
+    <div class="form-group"><label class="form-label">Mô tả</label>
+      <textarea class="form-control" id="sv-desc" rows="2">${esc(item?.description||'')}</textarea></div>
+    <div style="margin-bottom:8px;font-weight:600;font-size:13px">📝 Danh sách câu hỏi</div>
+    <div id="questions-wrap">${renderQ()}</div>
+    <button class="btn btn-secondary" onclick="addQuestion()" style="width:100%;margin-top:4px">➕ Thêm câu hỏi</button>`;
+  document.getElementById('modal-footer').innerHTML=`
+    <button class="btn btn-secondary" onclick="closeModal()">Hủy</button>
+    <button class="btn btn-primary" onclick="saveSurvey('${id||''}')">💾 Lưu</button>`;
+  // Store qs in window for manipulation
+  window._surveyQs=JSON.parse(JSON.stringify(qs));
+  window._rerenderQs=()=>{ document.getElementById('questions-wrap').innerHTML=renderQ(); };
+  openModal();
+}
+function addQuestion(){
+  window._surveyQs.push({text:'',type:'single',options:['','']});
+  window._rerenderQs();
+}
+function removeQuestion(i){
+  window._surveyQs.splice(i,1);
+  window._rerenderQs();
+}
+function addOption(qi){
+  window._surveyQs[qi].options.push('');
+  window._rerenderQs();
+}
+function removeOption(qi,oi){
+  window._surveyQs[qi].options.splice(oi,1);
+  window._rerenderQs();
+}
+function changeQType(qi){
+  const t=document.getElementById(`qtype-${qi}`).value;
+  window._surveyQs[qi].type=t;
+  if(t!=='text'&&(!window._surveyQs[qi].options||!window._surveyQs[qi].options.length))
+    window._surveyQs[qi].options=['',''];
+  window._rerenderQs();
+}
+async function saveSurvey(id){
+  const title=document.getElementById('sv-title').value.trim();
+  if(!title){showToast('Nhập tiêu đề khảo sát!','error');return;}
+  // Collect questions
+  const qs=window._surveyQs.map((q,i)=>{
+    const text=document.getElementById(`qt-${i}`)?.value.trim()||q.text;
+    const type=document.getElementById(`qtype-${i}`)?.value||q.type;
+    if(type!=='text'){
+      const opts=(q.options||[]).map((_,j)=>document.getElementById(`opt-${i}-${j}`)?.value.trim()||'').filter(Boolean);
+      return {text,type,options:opts};
+    }
+    return {text,type};
+  });
+  const payload={title,description:document.getElementById('sv-desc').value.trim(),questions:qs};
+  let err;
+  if(id){({error:err}=await sb.from('surveys').update(payload).eq('id',id));}
+  else{({error:err}=await sb.from('surveys').insert(payload));}
+  if(err){showToast('Lỗi: '+err.message,'error');return;}
+  showToast('Đã lưu khảo sát!','success'); closeModal(); loadSurveys();
+}
+
+// ================================================================
+// STATISTICS
+// ================================================================
+function initStatYears(){
+  const yearEl=document.getElementById('stat-year');
+  const cur=new Date().getFullYear();
+  yearEl.innerHTML=[cur,cur-1,cur-2,cur-3].map(y=>`<option value="${y}">${y}</option>`).join('');
+  // Month
+  const monthEl=document.getElementById('stat-month');
+  monthEl.innerHTML=Array.from({length:12},(_,i)=>
+    `<option value="${i+1}" ${i+1===statMonth?'selected':''}>Tháng ${i+1}</option>`).join('');
+}
+
+function switchStatTab(tab,el){
+  statsTab=tab;
+  document.querySelectorAll('.stat-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  const monthEl=document.getElementById('stat-month');
+  monthEl.style.display=(tab==='week')?'inline-block':'none';
+  loadStatistics();
+}
+
+async function loadStatistics(){
+  const year=parseInt(document.getElementById('stat-year').value)||new Date().getFullYear();
+  const month=parseInt(document.getElementById('stat-month').value)||new Date().getMonth()+1;
+  document.getElementById('stat-info').textContent='Đang tải...';
+
+  let startDate, endDate, labels=[], periods=[];
+  if(statsTab==='week'){
+    // Weeks of the month
+    const daysInMonth=new Date(year,month,0).getDate();
+    const weekCount=Math.ceil(daysInMonth/7);
+    for(let w=1;w<=weekCount;w++){
+      const wStart=new Date(year,month-1,(w-1)*7+1);
+      const wEnd=new Date(year,month-1,Math.min(w*7,daysInMonth));
+      labels.push(`Tuần ${w}`);
+      periods.push({start:wStart.toISOString().split('T')[0],end:wEnd.toISOString().split('T')[0]});
+    }
+    document.getElementById('stat-info').textContent=`Tháng ${month}/${year}`;
+  } else if(statsTab==='month'){
+    for(let m=1;m<=12;m++){
+      labels.push(`T${m}`);
+      periods.push({start:`${year}-${String(m).padStart(2,'0')}-01`,
+        end:`${year}-${String(m).padStart(2,'0')}-${new Date(year,m,0).getDate()}`});
+    }
+    document.getElementById('stat-info').textContent=`Năm ${year}`;
+  } else if(statsTab==='quarter'){
+    const qMonths=[[1,3],[4,6],[7,9],[10,12]];
+    qMonths.forEach(([s,e],i)=>{
+      labels.push(`Quý ${i+1}`);
+      periods.push({start:`${year}-${String(s).padStart(2,'0')}-01`,
+        end:`${year}-${String(e).padStart(2,'0')}-${new Date(year,e,0).getDate()}`});
+    });
+    document.getElementById('stat-info').textContent=`Năm ${year}`;
+  } else {
+    for(let y=year-4;y<=year;y++){
+      labels.push(`${y}`);
+      periods.push({start:`${y}-01-01`,end:`${y}-12-31`});
+    }
+    document.getElementById('stat-info').textContent='5 năm gần nhất';
+  }
+
+  // Fetch all news in range
+  const minDate=periods[0]?.start, maxDate=periods[periods.length-1]?.end;
+  const {data:allNewsData}=await sb.from('news').select('id,is_published,created_at')
+    .gte('created_at',minDate).lte('created_at',maxDate+'T23:59:59');
+
+  // Aggregate
+  const rows=periods.map((p,i)=>{
+    const inPeriod=(allNewsData||[]).filter(n=>{
+      const d=n.created_at?.split('T')[0];
+      return d>=p.start&&d<=p.end;
+    });
+    return {label:labels[i],total:inPeriod.length,
+      pub:inPeriod.filter(n=>n.is_published).length,
+      draft:inPeriod.filter(n=>!n.is_published).length};
+  });
+
+  document.getElementById('stat-info').textContent+=` — Tổng: ${rows.reduce((s,r)=>s+r.total,0)} bài`;
+
+  // Chart
+  const ctx=document.getElementById('stats-chart').getContext('2d');
+  if(statsChart){statsChart.destroy();}
+  statsChart=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {label:'Đã xuất bản',data:rows.map(r=>r.pub),backgroundColor:'rgba(200,16,46,0.8)',borderRadius:4},
+        {label:'Nháp',data:rows.map(r=>r.draft),backgroundColor:'rgba(160,174,192,0.6)',borderRadius:4}
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top'}},
+      scales:{x:{stacked:false},y:{beginAtZero:true,ticks:{stepSize:1}}}}
+  });
+
+  // Table
+  const tbody=document.getElementById('stats-tbody');
+  const tfoot=document.getElementById('stats-tfoot');
+  const totals={total:0,pub:0,draft:0};
+  tbody.innerHTML=rows.map(r=>{
+    totals.total+=r.total; totals.pub+=r.pub; totals.draft+=r.draft;
+    return `<tr><td>${r.label}</td><td><strong>${r.total}</strong></td>
+      <td style="color:var(--success)">${r.pub}</td>
+      <td style="color:var(--text3)">${r.draft}</td></tr>`;
+  }).join('');
+  tfoot.innerHTML=`<tr style="font-weight:700;background:#f8fafc">
+    <td>TỔNG</td><td>${totals.total}</td><td style="color:var(--success)">${totals.pub}</td><td>${totals.draft}</td></tr>`;
+
+  // Store for export
+  window._statsData={title:document.getElementById('header-title').textContent,rows,totals};
+}
+
+function exportStatsWord(){
+  if(!window._statsData){showToast('Hãy tải thống kê trước!','info');return;}
+  const {title,rows,totals}=window._statsData;
+  const year=document.getElementById('stat-year').value;
+  const tabName={week:'Theo tuần',month:'Theo tháng',quarter:'Theo quý',year:'Theo năm'}[statsTab];
+  const now=new Date().toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const html=`<html><head><meta charset="UTF-8">
+<style>
+  body{font-family:'Times New Roman',serif;font-size:13pt;margin:2cm}
+  h2{text-align:center;font-size:16pt;text-transform:uppercase}
+  h3{text-align:center;font-size:13pt;font-style:italic}
+  table{width:100%;border-collapse:collapse;margin-top:16pt}
+  th,td{border:1px solid #000;padding:5pt 8pt;text-align:center}
+  th{background:#f0f0f0;font-weight:bold}
+  td:first-child{text-align:left}
+  .total{font-weight:bold;background:#f9f9f9}
+  .footer{margin-top:16pt;font-size:11pt;color:#666}
+</style></head><body>
+<h2>THỐNG KÊ TIN BÀI ĐĂNG TẢI</h2>
+<h3>Ban Tuyên giáo Tỉnh ủy Tuyên Quang — ${tabName} — Năm ${year}</h3>
+<table>
+  <thead><tr><th>Kỳ</th><th>Tổng bài</th><th>Đã xuất bản</th><th>Nháp</th></tr></thead>
+  <tbody>
+    ${rows.map(r=>`<tr><td>${r.label}</td><td>${r.total}</td><td>${r.pub}</td><td>${r.draft}</td></tr>`).join('')}
+    <tr class="total"><td><b>TỔNG CỘNG</b></td><td><b>${totals.total}</b></td><td><b>${totals.pub}</b></td><td><b>${totals.draft}</b></td></tr>
+  </tbody>
+</table>
+<p class="footer">Xuất báo cáo: ${now}</p>
+</body></html>`;
+  const blob=new Blob(['﻿',html],{type:'application/msword'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`thong_ke_tin_bai_${year}_${statsTab}.doc`; a.click();
+  URL.revokeObjectURL(url);
+  showToast('✅ Đã tải file Word!','success');
+}
+
+// ================================================================
+// SETTINGS
+// ================================================================
+async function loadSettings(){
+  const listEl=document.getElementById('settings-list');
+  listEl.innerHTML=loadingHtml();
+  const {data,error}=await sb.from('app_settings').select('*').order('key');
+  if(error){listEl.innerHTML=`<div style="color:red">${error.message}</div>`;return;}
+  if(!data||!data.length){listEl.innerHTML=emptyState('Chưa có cài đặt nào');return;}
+  listEl.innerHTML=data.map(s=>`
+    <div class="settings-item">
+      <div class="settings-info">
+        <strong>${esc(s.label||s.key)}</strong>
+        <span>${esc(s.description||'')}</span>
+      </div>
+      <div class="settings-input">
+        <input type="text" class="form-control" id="setting-${s.key}" value="${esc(s.value||'')}"
+          placeholder="Nhập giá trị...">
+      </div>
+    </div>`).join('');
+}
+async function saveAllSettings(){
+  const {data}=await sb.from('app_settings').select('key');
+  if(!data)return;
+  for(const s of data){
+    const el=document.getElementById(`setting-${s.key}`);
+    if(!el)continue;
+    await sb.from('app_settings').update({value:el.value,updated_at:new Date().toISOString()}).eq('key',s.key);
+  }
+  showToast('✅ Đã lưu tất cả cài đặt!','success');
+}
+function saveCloudinaryConfig(){
+  cloudName=document.getElementById('cl-cloud-name').value.trim();
+  cloudPreset=document.getElementById('cl-preset').value.trim()||'tgdv_news';
+  localStorage.setItem('cl_cloud_name',cloudName);
+  localStorage.setItem('cl_preset',cloudPreset);
+}
+
+// ================================================================
+// CLOUDINARY UPLOAD
+// ================================================================
+function triggerCloudinaryQP(){
+  if(!cloudName){showToast('⚠️ Chưa cấu hình Cloudinary! Vào Cài đặt để nhập Cloud Name.','error');return;}
+  cloudinary.openUploadWidget({
+    cloudName,uploadPreset:cloudPreset,sources:['local','url','camera'],
+    multiple:false,language:'vi',maxFileSize:5000000,
+    cropping:false,folder:'tgdv-news',
+    styles:{palette:{window:'#FFFFFF',windowBorder:'#90A0B3',tabIcon:'#C8102E',
+      menuIcons:'#5A616A',textDark:'#000000',textLight:'#FFFFFF',
+      link:'#C8102E',action:'#C8102E',inactiveTabIcon:'#9B9B9B',
+      error:'#F44235',inProgress:'#0078FF',complete:'#20B832',sourceBg:'#E4EBF1'}}
+  },(error,result)=>{
+    if(!error&&result.event==='success'){
+      const url=result.info.secure_url;
+      document.getElementById('qp-image-url').value=url;
+      previewImage('qp-image-url','qp-img-preview');
+      showToast('✅ Tải ảnh thành công!','success');
+    }
+  });
+}
+function triggerCloudinaryModal(){
+  if(!cloudName){showToast('⚠️ Chưa cấu hình Cloudinary! Vào Cài đặt để nhập Cloud Name.','error');return;}
+  cloudinary.openUploadWidget({
+    cloudName,uploadPreset:cloudPreset,sources:['local','url','camera'],
+    multiple:false,maxFileSize:5000000,folder:'tgdv-news'
+  },(error,result)=>{
+    if(!error&&result.event==='success'){
+      const url=result.info.secure_url;
+      document.getElementById('m-image-url').value=url;
+      previewImage('m-image-url','m-img-preview');
+      showToast('✅ Tải ảnh thành công!','success');
+    }
+  });
+}
+
+// ================================================================
+// SHARED UTILS
+// ================================================================
+async function togglePublish(table,id,current){
+  const pub=!current;
+  const payload={is_published:pub,updated_at:new Date().toISOString()};
+  if(pub) payload.published_at=new Date().toISOString();
+  const {error}=await sb.from(table).update(payload).eq('id',id);
+  if(error){showToast('Lỗi: '+error.message,'error');return;}
+  showToast(pub?'✅ Đã xuất bản!':'✅ Đã chuyển về nháp','success');
+  loadSection(currentSection);
+}
+
+async function deleteItem(table,id,reloadFn){
+  if(!confirm('Bạn chắc chắn muốn xóa?')) return;
+  const {error}=await sb.from(table).delete().eq('id',id);
+  if(error){showToast('Lỗi xóa: '+error.message,'error');return;}
+  showToast('✅ Đã xóa!','success');
+  if(reloadFn==='loadNews') loadNews();
+  else if(reloadFn==='loadDocuments') loadDocuments();
+  else if(reloadFn==='loadNewsletters') loadNewsletters();
+  else if(reloadFn==='loadConferences') loadConferences();
+  else if(reloadFn==='loadSurveys') loadSurveys();
+  else loadSection(currentSection);
+}
+
+async function loadBadges(){
+  const {count}=await sb.from('feedback').select('id',{count:'exact'}).eq('status','moi');
+  const badge=document.getElementById('badge-feedback');
+  if(count>0){badge.textContent=count;badge.style.display='block';}
+  else{badge.style.display='none';}
+}
+
+function previewImage(inputId,previewId){
+  const val=document.getElementById(inputId)?.value.trim();
+  const prev=document.getElementById(previewId);
+  if(!prev)return;
+  if(val){prev.src=val;prev.style.display='block';}
+  else{prev.style.display='none';}
+}
+
+// ================================================================
+// MODAL
+// ================================================================
+function openModal(){ document.getElementById('modal-overlay').classList.add('open'); }
+function closeModal(){ document.getElementById('modal-overlay').classList.remove('open'); }
+function closeModalOnOverlay(e){ if(e.target===document.getElementById('modal-overlay'))closeModal(); }
+
+// ================================================================
+// TOAST
+// ================================================================
+function showToast(msg,type='info'){
+  const c=document.getElementById('toast-container');
+  const t=document.createElement('div');
+  t.className=`toast ${type}`;
+  const icon={success:'✅',error:'❌',info:'ℹ️'}[type]||'ℹ️';
+  t.innerHTML=`<span>${icon}</span><span>${msg}</span>`;
+  c.appendChild(t);
+  setTimeout(()=>t.remove(),3500);
+}
+
+// ================================================================
+// HELPERS
+// ================================================================
+function fmtDate(iso){
+  if(!iso)return '—';
+  try{return new Date(iso).toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'});}
+  catch{return iso.split('T')[0];}
+}
+function esc(str){
+  if(!str)return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function badge(text,color){
+  const map={green:'badge-green',red:'badge-red',blue:'badge-blue',yellow:'badge-yellow',gray:'badge-gray'};
+  return `<span class="badge ${map[color]||'badge-gray'}">${text}</span>`;
+}
+function emptyState(msg){
+  return `<div class="empty-state"><div class="icon">📭</div><p>${msg}</p></div>`;
+}
+function loadingHtml(){
+  return `<div class="loading"><div class="spinner"></div>Đang tải...</div>`;
+}
+</script>
+</body>
+</html>
